@@ -748,11 +748,12 @@ elif page=='Data Management':
         for _, brand_row in summary.iterrows():
             brand_name = str(brand_row['brand'])
             brand_key = ''.join(ch if ch.isalnum() else '_' for ch in brand_name.lower())
-            brand_col, rows_col, shipments_col, couriers_col, action_col = st.columns([3, 1, 1.4, 1, 1.2])
+            brand_col, rows_col, shipments_col, couriers_col, action_col = st.columns([2.6, 1.15, 1.45, 1, 1.1])
             with brand_col:
                 st.write(f"**{brand_name}**")
             with rows_col:
-                st.metric('Rows', f"{int(brand_row['rows']):,}")
+                st.metric('Rows', f"{int(brand_row['rows']):,}", help='Total source rows for this brand')
+                st.markdown('<style>[data-testid="stMetricValue"] { font-size: 1.8rem; white-space: nowrap; }</style>', unsafe_allow_html=True)
             with shipments_col:
                 st.metric('Unique shipments', f"{int(brand_row['unique_shipments']):,}")
             with couriers_col:
