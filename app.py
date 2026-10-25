@@ -435,6 +435,7 @@ def kpi_row(df, previous_df=None):
     pickup_delivery = (delivery.dt.normalize() - pickup.dt.normalize()).dt.total_seconds() / 86400
     pickup_delivery = pickup_delivery[delivered_mask & pickup.notna() & delivery.notna() & pickup_delivery.ge(0)]
 
+    attention_display = None
     op1, op2, op3 = st.columns(3)
     with op1:
         attempts_display = f'{attempt_avg:.2f}' if attempt_avg is not None else 'N/A'
@@ -457,9 +458,7 @@ def kpi_row(df, previous_df=None):
                 attention = attention[display_cols + ['_attempt_count']].rename(
                     columns={'_attempt_count': 'delivery_attempts'}
                 )
-                st.markdown('##### ⚠️ Shipments requiring attention')
-                st.caption('Shipments with more than 2 recorded delivery attempts, sorted from highest to lowest.')
-                st.dataframe(attention, use_container_width=True, hide_index=True)
+                attention_display = attention
             elif attempt_avg is not None:
                 st.caption('No shipments exceeded 2 recorded attempts in the selected data.')
     with op2:
@@ -470,6 +469,12 @@ def kpi_row(df, previous_df=None):
         pd_display = f'{pickup_delivery.mean():.2f} days' if not pickup_delivery.empty else 'N/A'
         st.metric('Pickup → Delivery', pd_display,
                   help=f'Average delivered-shipment turnaround across {len(pickup_delivery):,} shipments with valid, non-negative dates.')
+
+    # Render outside the three KPI columns so the attention table uses the full dashboard width.
+    if attention_display is not None:
+        st.markdown('##### ⚠️ Shipments requiring attention')
+        st.caption('Shipments with more than 2 recorded delivery attempts, sorted from highest to lowest.')
+        st.dataframe(attention_display, use_container_width=True, hide_index=True)
 
 def rate_table(df, by):
     if df.empty: return pd.DataFrame()
