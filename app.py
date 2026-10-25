@@ -650,23 +650,6 @@ if 'custom_brands' not in st.session_state: st.session_state.custom_brands=[]
 with st.sidebar:
     st.markdown('## 📦 ShipIQ')
     st.caption('Shipment Intelligence Control Tower')
-    st.markdown(f"**{AUTH_USER['full_name']}**")
-    st.caption(AUTH_USER['email'] + " · " + ROLE + (" · Primary Admin" if AUTH_USER["is_primary_admin"] else ""))
-    if st.button("Sign out", key="shipiq_sign_out", use_container_width=True):
-        st.session_state.pop("auth_user", None)
-        st.rerun()
-    with st.expander("Change my password"):
-        with st.form("shipiq_change_password"):
-            current_pw = st.text_input("Current password", type="password", key="current_pw")
-            new_pw = st.text_input("New password (10+ characters)", type="password", key="new_pw")
-            confirm_pw = st.text_input("Confirm new password", type="password", key="confirm_new_pw")
-            change_pw_submit = st.form_submit_button("Update password")
-        if change_pw_submit:
-            if new_pw != confirm_pw:
-                st.error("New passwords do not match.")
-            else:
-                ok, message = change_own_password(DB_PATH, AUTH_USER["id"], current_pw, new_pw)
-                (st.success if ok else st.error)(message)
     nav_pages = ['Executive Overview','Brand-wise Analysis','AI Recommendation','State-wise Analysis','Courier-wise Analysis']
     if ROLE in ('Admin','Analyst'):
         nav_pages.extend(['Data Management','Reports'])
@@ -696,6 +679,25 @@ with st.sidebar:
     else:
         start_d=end_d=None; chosen_brands=[]
         st.info('Upload a dataset in Data Management to begin.')
+
+    st.divider()
+    st.markdown(f"**{AUTH_USER['full_name']}**")
+    st.caption(AUTH_USER['email'] + " · " + ROLE + (" · Primary Admin" if AUTH_USER["is_primary_admin"] else ""))
+    if st.button("Sign out", key="shipiq_sign_out", use_container_width=True):
+        st.session_state.pop("auth_user", None)
+        st.rerun()
+    with st.expander("Change my password"):
+        with st.form("shipiq_change_password"):
+            current_pw = st.text_input("Current password", type="password", key="current_pw")
+            new_pw = st.text_input("New password (10+ characters)", type="password", key="new_pw")
+            confirm_pw = st.text_input("Confirm new password", type="password", key="confirm_new_pw")
+            change_pw_submit = st.form_submit_button("Update password")
+        if change_pw_submit:
+            if new_pw != confirm_pw:
+                st.error("New passwords do not match.")
+            else:
+                ok, message = change_own_password(DB_PATH, AUTH_USER["id"], current_pw, new_pw)
+                (st.success if ok else st.error)(message)
 
 # Filter by manifested date and brand, shared across all analytics and exports.
 def apply_filters(data):
