@@ -39,7 +39,7 @@ def normalize_status(v):
     """Map source statuses to outcome groups without treating 'undelivered' as 'delivered'."""
     if pd.isna(v) or not str(v).strip():
         return 'Unknown'
-    s = re.sub(r'\\s+', ' ', str(v).strip().lower())
+    s = re.sub(r'\s+', ' ', str(v).strip().lower())
     # Outcomes that must take precedence over the substring "deliver".
     if any(x in s for x in ['rto', 'return to origin', 'returned to origin', 'return-to-origin']):
         return 'RTO'
