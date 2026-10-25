@@ -6,7 +6,6 @@ import hmac
 import os
 import sqlite3
 import time
-import time
 from datetime import datetime, timezone
 
 ROLES = ("Admin", "Analyst", "Viewer")
