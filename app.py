@@ -26,90 +26,40 @@ st.markdown('''<style>
 :root { --shipiq-bg:#0B1220; --shipiq-surface:#121D2D; --shipiq-surface2:#19283A; --shipiq-line:#263B50; --shipiq-gold:#35D0C5; --shipiq-ivory:#EDF7FF; --shipiq-muted:#9AAFC2; }
 html, body, [class*="css"] { font-family:'DM Sans',sans-serif; }
 .stApp { background:radial-gradient(ellipse at 12% 0%,rgba(53,208,197,.10),transparent 35%),#0B1220; color:var(--shipiq-ivory); }
-/* Quiklee watermark — fixed behind Streamlit content, without affecting interaction */
-.stApp {
-  position:relative;
-  isolation:isolate;
-}
-.stApp::before {
-  content:"";
-  position:fixed;
-  left:50%;
-  top:54%;
-  width:min(82vw, 1120px);
-  height:min(82vh, 760px);
-  z-index:0;
-  pointer-events:none;
-  background-image:url("https://raw.githubusercontent.com/AbhishekBharadwaj2003/ShipIQ/main/data/quiklee_india_cover.jpg");
-  background-repeat:no-repeat;
-  background-position:center;
-  background-size:contain;
-  opacity:.14;
-  transform:translate(-50%, -50%) rotate(-12deg);
-  transform-origin:center;
-}
-/* Keep app content above the watermark while leaving its own backgrounds intact. */
-.stApp [data-testid="stAppViewContainer"],
-.stApp [data-testid="stHeader"],
-.stApp [data-testid="stSidebar"] {
-  position:relative;
-}
-.stApp [data-testid="stAppViewContainer"]::before {
-  content:"";
+/* Quiklee watermark: render as a real DOM layer, above the app background */
+.shipiq-watermark-layer {
   position:fixed;
   inset:0;
-  z-index:-1;
+  z-index:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
   pointer-events:none;
 }
-@media (max-width: 768px) {
-  .stApp::before {
-    width:94vw;
-    height:58vh;
-    top:48%;
-    opacity:.09;
-  }
+.shipiq-watermark-layer img {
+  display:block;
+  width:min(78vw, 1120px);
+  max-height:76vh;
+  object-fit:contain;
+  opacity:.13;
+  transform:rotate(-12deg);
+  filter:grayscale(1) brightness(1.8);
 }
-.block-container { padding-top:1.6rem; padding-bottom:3rem; max-width:1520px; }
-[data-testid="stHeader"] { background:rgba(11,18,32,.90); }
-[data-testid="stSidebar"] { background:linear-gradient(180deg,#121D2D 0%,#0D1624 100%); border-right:1px solid var(--shipiq-line); }
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color:#C7D7E7; }
-[data-testid="stSidebar"] [data-testid="stRadio"] label { padding:.25rem 0; }
-h1,h2,h3,h4 { font-family:'Manrope',sans-serif !important; letter-spacing:-.035em; color:var(--shipiq-ivory); }
-h1 { font-weight:800 !important; } h2 { font-weight:750 !important; } h3 { font-weight:700 !important; }
-.shipiq-kicker { display:block; width:100%; font-size:.82rem; letter-spacing:.16em; text-transform:uppercase; color:#75FFF3 !important; -webkit-text-fill-color:#75FFF3 !important; font-weight:900; line-height:1.7; opacity:1 !important; visibility:visible !important; text-shadow:0 0 8px rgba(53,208,197,.65), 0 0 18px rgba(53,208,197,.35); margin-bottom:.5rem; overflow:visible; }
-.shipiq-title { font-family:'Manrope',sans-serif; font-size:2.35rem; font-weight:800; letter-spacing:-.055em; line-height:1.08; color:var(--shipiq-ivory); }
-.shipiq-sub { color:var(--shipiq-muted); font-size:1rem; margin-top:.55rem; line-height:1.65; }
-[data-testid="stMetric"] { background:linear-gradient(145deg,#19283A,#121D2D); border:1px solid var(--shipiq-line); border-radius:15px; padding:19px 20px; box-shadow:0 10px 26px rgba(0,0,0,.12); transition:transform .18s ease,border-color .18s ease; }
-[data-testid="stMetric"]:hover { transform:translateY(-2px); border-color:rgba(53,208,197,.60); }
-[data-testid="stMetricLabel"] { color:#A9BED1 !important; font-size:.84rem !important; }
-[data-testid="stMetricValue"] { color:var(--shipiq-ivory) !important; font-family:'Manrope',sans-serif; font-weight:800; font-size:clamp(1.2rem, 1.75vw, 1.75rem) !important; white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important; letter-spacing:-.035em; }
-[data-testid="stMetric"] { min-width:0; }
-[data-testid="stMetric"] [data-testid="stMetricValue"] > div { white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important; }
-[data-testid="stMetricDelta"] { overflow:visible !important; width:100% !important; }
-[data-testid="stMetricDelta"] > div { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; display:flex !important; flex-wrap:wrap !important; align-items:flex-start; gap:.2rem; width:100% !important; }
-[data-testid="stMetricDelta"] svg { flex-shrink:0; }
-[data-testid="stMetric"] [data-testid="stMetricDelta"] p { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; overflow-wrap:anywhere !important; }
-[data-testid="stHorizontalBlock"] > [data-testid="column"] { min-width:0 !important; }
-@media (min-width: 769px) { [data-testid="stMetricDelta"] { font-size:clamp(.62rem, .72vw, .76rem) !important; line-height:1.3 !important; } }
-@media (max-width: 1100px) { [data-testid="stMetricDelta"] { font-size:.62rem !important; } }
-[data-testid="stMetricDelta"] { color:var(--shipiq-gold) !important; }
-[data-testid="stVerticalBlockBorderWrapper"] { border-color:var(--shipiq-line) !important; border-radius:15px !important; }
-[data-testid="stExpander"] { border:1px solid var(--shipiq-line); border-radius:12px; background:rgba(32,32,32,.7); }
-[data-testid="stDataFrame"],[data-testid="stTable"] { border:1px solid var(--shipiq-line); border-radius:12px; overflow:hidden; }
-[data-testid="stTextInput"] input,[data-testid="stNumberInput"] input,[data-testid="stDateInput"] input,[data-testid="stSelectbox"] [data-baseweb="select"] > div,[data-testid="stMultiSelect"] [data-baseweb="select"] > div,[data-testid="stTextArea"] textarea { background:#172638 !important; border-color:#355268 !important; border-radius:9px !important; color:var(--shipiq-ivory) !important; }
-[data-testid="stFileUploader"] section { background:rgba(18,29,45,.78); border:1px dashed #3D7180; border-radius:12px; }
-[data-testid="stFileUploader"] section:hover { border-color:var(--shipiq-gold); }
-.stButton > button,[data-testid="stFormSubmitButton"] > button { border-radius:9px; border:1px solid #35D0C5; background:linear-gradient(110deg,#35D0C5,#159AAB); color:#071B25; font-weight:700; padding:.55rem 1rem; box-shadow:none; transition:transform .16s ease,filter .16s ease; }
-.stButton > button:hover,[data-testid="stFormSubmitButton"] > button:hover { filter:brightness(1.08); transform:translateY(-1px); border-color:#8CF2E9; color:#071B25; }
-.stButton > button[kind="secondary"] { background:#1A2B3D; border-color:#4A453C; color:#E3F6FF; box-shadow:none; }
-[data-baseweb="tab-list"] { gap:.35rem; border-bottom:1px solid var(--shipiq-line); }
-[data-baseweb="tab"] { background:transparent; border-radius:9px 9px 0 0; padding:.65rem 1rem; color:#B8B0A4; }
-[data-baseweb="tab"][aria-selected="true"] { color:var(--shipiq-gold); border-bottom-color:var(--shipiq-gold); }
-hr { border-color:var(--shipiq-line); } a { color:var(--shipiq-gold) !important; }
-[data-testid="stPlotlyChart"] { background:rgba(32,32,32,.55); border:1px solid var(--shipiq-line); border-radius:13px; padding:.35rem; }
-.stAlert { border-radius:12px; border:1px solid var(--shipiq-line); }
-@media (max-width:768px) { .block-container{padding-left:1rem;padding-right:1rem;} .shipiq-title{font-size:1.9rem;} [data-testid="stMetric"]{padding:13px;border-radius:12px;} }
+[data-testid="stAppViewContainer"] > .main {
+  position:relative;
+  z-index:2;
+  background:transparent !important;
+}
+[data-testid="stSidebar"] {
+  position:relative;
+  z-index:3;
+}
+@media (max-width: 768px) {
+  .shipiq-watermark-layer img { width:94vw; max-height:58vh; opacity:.09; }
+}
 </style>''', unsafe_allow_html=True)
+st.markdown('''<div class="shipiq-watermark-layer"><img src="https://raw.githubusercontent.com/AbhishekBharadwaj2003/ShipIQ/main/data/quiklee_india_cover.jpg" alt="" aria-hidden="true"></div>''', unsafe_allow_html=True)
 
 @st.cache_data(show_spinner=False)
 def load_excel(path, brand):
