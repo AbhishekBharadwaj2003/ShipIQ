@@ -1183,7 +1183,7 @@ elif page=='Reports':
     else:
         kpi_row(filtered)
         st.markdown('#### Export selected analysis')
-        st.write('Both downloads respect the active date and brand filters. The PDF contains an executive KPI summary, brand summary, courier performance table, and methodology note. The CSV contains the filtered, cleaned shipment-level records plus normalized status flags.')
+        st.write('Both downloads respect the active date and brand filters. The PDF includes the executive KPI summary, brand-wise analysis, state-wise analysis, courier-wise analysis, rule-based AI recommendations, and methodology notes. The CSV contains the filtered, cleaned shipment-level records plus normalized status flags.')
         pdf=pdf_report(filtered,'Executive Shipment Performance Report',filter_text)
         st.download_button('📄 Download executive report (PDF)',data=pdf,file_name='ShipIQ_Executive_Report.pdf',mime='application/pdf',type='primary',use_container_width=True)
         csv=filtered.drop(columns=['manifest_date'],errors='ignore').to_csv(index=False).encode('utf-8-sig')
