@@ -27,23 +27,9 @@ st.markdown('''<style>
 :root { --shipiq-bg:#0B1220; --shipiq-surface:#121D2D; --shipiq-surface2:#19283A; --shipiq-line:#263B50; --shipiq-gold:#35D0C5; --shipiq-ivory:#EDF7FF; --shipiq-muted:#9AAFC2; }
 html, body, [class*="css"] { font-family:'DM Sans',sans-serif; }
 .stApp { background:radial-gradient(ellipse at 12% 0%,rgba(53,208,197,.10),transparent 35%),#0B1220; color:var(--shipiq-ivory); }
-/* Watermark is rendered as a background layer, never as foreground content. */
-.stApp {
-  background-color:#0B1220 !important;
-  background-image:
-    radial-gradient(ellipse at 12% 0%, rgba(53,208,197,.10), transparent 35%),
-    linear-gradient(rgba(11,18,32,.84), rgba(11,18,32,.84)),
-    url("https://raw.githubusercontent.com/AbhishekBharadwaj2003/ShipIQ/main/data/quiklee_india_cover.jpg") !important;
-  background-repeat:no-repeat, no-repeat, no-repeat !important;
-  background-position:center, center, center 54% !important;
-  background-size:cover, cover, min(78vw, 1120px) auto !important;
-  background-attachment:fixed !important;
-}
-[data-testid="stAppViewContainer"] > .main { background:transparent !important; }
-[data-testid="stSidebar"] { position:relative; z-index:2; }
-
+.stApp { background:radial-gradient(ellipse at 12% 0%,rgba(53,208,197,.10),transparent 35%),#0B1220; color:var(--shipiq-ivory); }
 </style>''', unsafe_allow_html=True)
-# The Quiklee logo is applied as a background image in CSS so it cannot cover dashboard content.
+
 
 @st.cache_data(show_spinner=False)
 def load_excel(path, brand):
