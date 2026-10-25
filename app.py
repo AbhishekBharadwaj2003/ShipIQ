@@ -132,8 +132,24 @@ def load_defaults():
 def rate(num, den): return (100*num/den) if den else 0.0
 
 def metrics(df):
-    total=len(df); delivered=int(df['is_delivered'].sum()); rto=int(df['is_rto'].sum()); cancelled=int(df['is_cancelled'].sum()); final=int(df['is_final'].sum())
-    return {'Shipments':total,'Delivered':delivered,'Delivery rate':rate(delivered,final),'RTO':rto,'RTO rate':rate(rto,final),'Cancelled':cancelled,'Cancellation rate':rate(cancelled,final),'Finalized':final,'Pending / in progress':total-final}
+    total = len(df)
+    delivered = int(df['is_delivered'].sum())
+    rto = int(df['is_rto'].sum())
+    cancelled = int(df['is_cancelled'].sum())
+    final = int(df['is_final'].sum())
+    known_pending = {'Manifested/Pending', 'In Transit/Attempting'}
+    pending = int(df['normalized_status'].isin(known_pending).sum())
+    recognized = {'Delivered', 'RTO', 'Cancelled', 'Lost/Damaged', 'Failed/Undelivered',
+                  'Manifested/Pending', 'In Transit/Attempting'}
+    unknown = int((~df['normalized_status'].isin(recognized)).sum())
+    return {
+        'Shipments': total, 'Delivered': delivered,
+        'Delivery rate': rate(delivered, final), 'RTO': rto,
+        'RTO rate': rate(rto, final), 'Cancelled': cancelled,
+        'Cancellation rate': rate(cancelled, final), 'Finalized': final,
+        'Pending / in progress': pending, 'Unknown / unmapped status': unknown,
+    }
+
 
 def kpi_row(df):
     m=metrics(df)
@@ -156,7 +172,7 @@ def pdf_report(df, title, filters_text):
     story.append(Paragraph(title,styles['Heading2']))
     story.append(Paragraph(filters_text,styles['Normal'])); story.append(Spacer(1,12))
     m=metrics(df)
-    summary=[['Metric','Value'],['Total shipments',f"{m['Shipments']:,}"],['Delivered',f"{m['Delivered']:,}"],['Delivery rate (finalized shipments)',f"{m['Delivery rate']:.1f}%"],['RTO',f"{m['RTO']:,}"],['RTO rate (finalized shipments)',f"{m['RTO rate']:.1f}%"],['Cancelled',f"{m['Cancelled']:,}"],['Cancellation rate (finalized shipments)',f"{m['Cancellation rate']:.1f}%"],['Pending / in progress',f"{m['Pending / in progress']:,}"]]
+    summary=[['Metric','Value'],['Total shipments',f"{m['Shipments']:,}"],['Delivered',f"{m['Delivered']:,}"],['Delivery rate (finalized shipments)',f"{m['Delivery rate']:.1f}%"],['RTO',f"{m['RTO']:,}"],['RTO rate (finalized shipments)',f"{m['RTO rate']:.1f}%"],['Cancelled',f"{m['Cancelled']:,}"],['Cancellation rate (finalized shipments)',f"{m['Cancellation rate']:.1f}%"],['Pending / in progress',f"{m['Pending / in progress']:,}"],['Unknown / unmapped status',f"{m['Unknown / unmapped status']:,}"]]
     t=Table(summary,colWidths=[270,150]); t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#17243b')),('TEXTCOLOR',(0,0),(-1,0),colors.white),('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('GRID',(0,0),(-1,-1),.35,colors.lightgrey),('PADDING',(0,0),(-1,-1),7)])); story.append(t); story.append(Spacer(1,14))
     story.append(Paragraph('Brand summary',styles['Heading3']))
     if 'brand' in df.columns:
@@ -239,7 +255,9 @@ if page=='Executive Overview':
         m=metrics(filtered)
         signals=[]
         if m['Shipments']:
-            signals.append(f"**{m['Pending / in progress']:,} shipments** are not currently classified as finalized; treat rates as provisional until more shipments reach a final outcome.")
+            signals.append(f"**{m['Pending / in progress']:,} shipments** are classified as pending/in progress. Outcome rates exclude these shipments until a final status is recorded.")
+            if m['Unknown / unmapped status']:
+                signals.append(f"**{m['Unknown / unmapped status']:,} shipments** have unknown or unmapped statuses; review the source-status mapping before interpreting the dashboard.")
             cr=rate_table(filtered,'courier_name')
             eligible=cr[cr['shipments']>=10]
             if not eligible.empty:
