@@ -37,7 +37,7 @@ h1 { font-weight:800 !important; } h2 { font-weight:750 !important; } h3 { font-
 [data-testid="stMetric"] { background:linear-gradient(145deg,#19283A,#121D2D); border:1px solid var(--shipiq-line); border-radius:15px; padding:19px 20px; box-shadow:0 10px 26px rgba(0,0,0,.12); transition:transform .18s ease,border-color .18s ease; }
 [data-testid="stMetric"]:hover { transform:translateY(-2px); border-color:rgba(53,208,197,.60); }
 [data-testid="stMetricLabel"] { color:#A9BED1 !important; font-size:.84rem !important; }
-[data-testid="stMetricValue"] { color:var(--shipiq-ivory) !important; font-family:'Manrope',sans-serif; font-weight:800; font-size:clamp(1.45rem, 2.15vw, 2.15rem) !important; white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important; letter-spacing:-.035em; }
+[data-testid="stMetricValue"] { color:var(--shipiq-ivory) !important; font-family:'Manrope',sans-serif; font-weight:800; font-size:clamp(1.2rem, 1.75vw, 1.75rem) !important; white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important; letter-spacing:-.035em; }
 [data-testid="stMetric"] { min-width:0; }
 [data-testid="stMetric"] [data-testid="stMetricValue"] > div { white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important; }
 [data-testid="stMetricDelta"] { overflow:visible !important; width:100% !important; }
