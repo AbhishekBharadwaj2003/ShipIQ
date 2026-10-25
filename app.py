@@ -25,6 +25,52 @@ st.set_page_config(page_title='ShipIQ | Shipment Intelligence', page_icon='📦'
 st.markdown('''<style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
 :root { --shipiq-bg:#0B1220; --shipiq-surface:#121D2D; --shipiq-surface2:#19283A; --shipiq-line:#263B50; --shipiq-gold:#35D0C5; --shipiq-ivory:#EDF7FF; --shipiq-muted:#9AAFC2; }
+/* ShipIQ dark-teal theme: keep Streamlit's sidebar and controls in the same visual system. */
+[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #101D2D 0%, #0B1220 100%) !important;
+    border-right: 1px solid #263B50;
+}
+[data-testid="stSidebar"] > div:first-child { background: transparent !important; }
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] .stCaption,
+[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p {
+    color: #C3D3E0 !important;
+}
+[data-testid="stSidebar"] h1,
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] h3 { color: #EDF7FF !important; }
+[data-testid="stSidebar"] hr { border-color: #263B50 !important; }
+[data-testid="stSidebar"] [data-testid="stRadio"] > div { gap: .35rem; }
+[data-testid="stSidebar"] [data-testid="stRadio"] label {
+    background: #121D2D;
+    border: 1px solid #263B50;
+    border-radius: 10px;
+    padding: .35rem .55rem;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
+    background: #173640 !important;
+    border-color: #35D0C5 !important;
+}
+[data-testid="stSidebar"] input,
+[data-testid="stSidebar"] [data-baseweb="select"] > div,
+[data-testid="stSidebar"] [data-baseweb="input"] > div,
+[data-testid="stSidebar"] [data-baseweb="datepicker"] {
+    background-color: #121D2D !important;
+    color: #EDF7FF !important;
+    border-color: #355064 !important;
+}
+[data-testid="stSidebar"] [data-baseweb="tag"] {
+    background-color: #173640 !important;
+    color: #EDF7FF !important;
+}
+[data-testid="stSidebar"] button {
+    border-color: #355064 !important;
+}
+[data-testid="stSidebar"] [data-testid="stAlert"] {
+    background: #121D2D !important;
+    border: 1px solid #263B50 !important;
+}
 html, body, [class*="css"] { font-family:'DM Sans',sans-serif; }
 .stApp { background:radial-gradient(ellipse at 12% 0%,rgba(53,208,197,.10),transparent 35%),#0B1220; color:var(--shipiq-ivory); }
 
