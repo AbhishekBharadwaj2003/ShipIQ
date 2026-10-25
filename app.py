@@ -970,99 +970,100 @@ elif page=='Data Management':
                     st.rerun()
             except Exception as e:
                 st.error(f'Could not read dataset: {e}')
-    st.caption('Existing brands are available in the dropdown. Select “➕ Add new brand” to reveal a field where you can type a new brand name.')
-    st.divider(); st.subheader('Loaded brands and source data')
-    data=st.session_state.dataset
-    if data.empty: st.info('No datasets loaded.')
-    else:
-        summary=data.groupby('brand').agg(rows=('brand','size'),unique_shipments=('shipment_id','nunique') if 'shipment_id' in data.columns else ('brand','size'),couriers=('courier_name','nunique')).reset_index()
-        st.caption(f"Saved dataset total: {len(data):,} source rows. Original bundled September datasets load automatically when the app starts.")
-        st.markdown('**Stored brands**')
-        st.caption('Delete removes that brand’s rows from the saved local dataset. Bundled source Excel files remain unchanged; use Reset to restore the bundled September datasets.')
-        for _, brand_row in summary.iterrows():
-            brand_name = str(brand_row['brand'])
-            brand_key = ''.join(ch if ch.isalnum() else '_' for ch in brand_name.lower())
-            brand_col, rows_col, shipments_col, couriers_col, action_col = st.columns([2.6, 1.15, 1.45, 1, 1.1])
-            with brand_col:
-                st.write(f"**{brand_name}**")
-            with rows_col:
-                st.metric('Rows', f"{int(brand_row['rows']):,}", help='Total source rows for this brand')
-                st.markdown('<style>[data-testid="stMetricValue"] { font-size: 1.8rem; white-space: nowrap; }</style>', unsafe_allow_html=True)
-            with shipments_col:
-                st.metric('Unique shipments', f"{int(brand_row['unique_shipments']):,}")
-            with couriers_col:
-                st.metric('Couriers', f"{int(brand_row['couriers']):,}")
-            with action_col:
-                if st.button('Delete',key=f'delete_brand_{brand_key}',type='secondary'):
-                    st.session_state[f'confirm_delete_brand_{brand_key}'] = True
-            if st.session_state.get(f'confirm_delete_brand_{brand_key}', False):
-                st.warning(f"Delete all {int(brand_row['rows']):,} rows for {brand_name} from the saved local dataset?")
-                confirm_col, cancel_col = st.columns([1, 1])
-                with confirm_col:
-                    if st.button(f"Confirm delete {brand_name}",key=f'confirm_delete_button_{brand_key}',type='primary'):
-                        st.session_state.dataset = st.session_state.dataset.loc[
-                            ~st.session_state.dataset['brand'].astype(str).str.casefold().eq(brand_name.casefold())
-                        ].reset_index(drop=True)
-                        save_dataset(st.session_state.dataset)
-                        st.session_state.pop(f'confirm_delete_brand_{brand_key}', None)
-                        st.success(f"Deleted {brand_name} from the saved local dataset.")
-                        st.rerun()
-                with cancel_col:
-                    if st.button('Cancel',key=f'cancel_delete_brand_{brand_key}'):
-                        st.session_state.pop(f'confirm_delete_brand_{brand_key}', None)
-                        st.rerun()
+    if ROLE == 'Admin':
+        st.caption('Existing brands are available in the dropdown. Select “➕ Add new brand” to reveal a field where you can type a new brand name.')
+        st.divider(); st.subheader('Loaded brands and source data')
+        data=st.session_state.dataset
+        if data.empty: st.info('No datasets loaded.')
+        else:
+            summary=data.groupby('brand').agg(rows=('brand','size'),unique_shipments=('shipment_id','nunique') if 'shipment_id' in data.columns else ('brand','size'),couriers=('courier_name','nunique')).reset_index()
+            st.caption(f"Saved dataset total: {len(data):,} source rows. Original bundled September datasets load automatically when the app starts.")
+            st.markdown('**Stored brands**')
+            st.caption('Delete removes that brand’s rows from the saved local dataset. Bundled source Excel files remain unchanged; use Reset to restore the bundled September datasets.')
+            for _, brand_row in summary.iterrows():
+                brand_name = str(brand_row['brand'])
+                brand_key = ''.join(ch if ch.isalnum() else '_' for ch in brand_name.lower())
+                brand_col, rows_col, shipments_col, couriers_col, action_col = st.columns([2.6, 1.15, 1.45, 1, 1.1])
+                with brand_col:
+                    st.write(f"**{brand_name}**")
+                with rows_col:
+                    st.metric('Rows', f"{int(brand_row['rows']):,}", help='Total source rows for this brand')
+                    st.markdown('<style>[data-testid="stMetricValue"] { font-size: 1.8rem; white-space: nowrap; }</style>', unsafe_allow_html=True)
+                with shipments_col:
+                    st.metric('Unique shipments', f"{int(brand_row['unique_shipments']):,}")
+                with couriers_col:
+                    st.metric('Couriers', f"{int(brand_row['couriers']):,}")
+                with action_col:
+                    if st.button('Delete',key=f'delete_brand_{brand_key}',type='secondary'):
+                        st.session_state[f'confirm_delete_brand_{brand_key}'] = True
+                if st.session_state.get(f'confirm_delete_brand_{brand_key}', False):
+                    st.warning(f"Delete all {int(brand_row['rows']):,} rows for {brand_name} from the saved local dataset?")
+                    confirm_col, cancel_col = st.columns([1, 1])
+                    with confirm_col:
+                        if st.button(f"Confirm delete {brand_name}",key=f'confirm_delete_button_{brand_key}',type='primary'):
+                            st.session_state.dataset = st.session_state.dataset.loc[
+                                ~st.session_state.dataset['brand'].astype(str).str.casefold().eq(brand_name.casefold())
+                            ].reset_index(drop=True)
+                            save_dataset(st.session_state.dataset)
+                            st.session_state.pop(f'confirm_delete_brand_{brand_key}', None)
+                            st.success(f"Deleted {brand_name} from the saved local dataset.")
+                            st.rerun()
+                    with cancel_col:
+                        if st.button('Cancel',key=f'cancel_delete_brand_{brand_key}'):
+                            st.session_state.pop(f'confirm_delete_brand_{brand_key}', None)
+                            st.rerun()
 
-        st.divider()
-        st.markdown('**Remove data for a specific brand and date range**')
-        st.caption('Use this to remove a test upload (for example, Freely from 01–05 October) without deleting the brand’s other dates.')
-        remove_brands = sorted(data['brand'].dropna().astype(str).unique().tolist())
-        remove_brand = st.selectbox('Brand to remove from', remove_brands, key='remove_range_brand')
-        remove_start, remove_end = st.date_input(
-            'Dates to remove',
-            value=(pd.Timestamp('2026-10-01').date(), pd.Timestamp('2026-10-05').date()),
-            key='remove_range_dates'
-        )
-        if st.button('Remove selected brand data for these dates', type='secondary', key='remove_brand_date_range'):
-            if not isinstance(remove_start, type(pd.Timestamp.today().date())) or not isinstance(remove_end, type(pd.Timestamp.today().date())):
-                st.error('Choose both a start date and an end date.')
-            elif remove_start > remove_end:
-                st.error('The start date must be on or before the end date.')
-            else:
-                st.session_state['pending_remove_range'] = {
-                    'brand': remove_brand,
-                    'start': remove_start.isoformat(),
-                    'end': remove_end.isoformat(),
-                }
-        pending_remove = st.session_state.get('pending_remove_range')
-        if pending_remove:
-            st.warning(
-                f"Remove all {pending_remove['brand']} rows with manifested dates from "
-                f"{pending_remove['start']} through {pending_remove['end']}? This cannot be undone unless you upload the data again."
+            st.divider()
+            st.markdown('**Remove data for a specific brand and date range**')
+            st.caption('Use this to remove a test upload (for example, Freely from 01–05 October) without deleting the brand’s other dates.')
+            remove_brands = sorted(data['brand'].dropna().astype(str).unique().tolist())
+            remove_brand = st.selectbox('Brand to remove from', remove_brands, key='remove_range_brand')
+            remove_start, remove_end = st.date_input(
+                'Dates to remove',
+                value=(pd.Timestamp('2026-10-01').date(), pd.Timestamp('2026-10-05').date()),
+                key='remove_range_dates'
             )
-            yes_col, no_col = st.columns(2)
-            with yes_col:
-                if st.button('Confirm date-range removal', type='primary', key='confirm_remove_range'):
-                    start_remove = pd.Timestamp(pending_remove['start']).date()
-                    end_remove = pd.Timestamp(pending_remove['end']).date()
-                    current = st.session_state.dataset
-                    row_dates = pd.to_datetime(current[DATE_COL], errors='coerce').dt.date
-                    target_brand = current['brand'].astype(str).str.casefold().eq(pending_remove['brand'].casefold())
-                    target_dates = row_dates.ge(start_remove) & row_dates.le(end_remove)
-                    removed_count = int((target_brand & target_dates).sum())
-                    st.session_state.dataset = current.loc[~(target_brand & target_dates)].reset_index(drop=True)
-                    save_dataset(st.session_state.dataset)
-                    st.session_state.pop('pending_remove_range', None)
-                    st.success(f"Removed {removed_count:,} rows for {pending_remove['brand']} from {start_remove} through {end_remove}. Other brands and dates were retained.")
-                    st.rerun()
-            with no_col:
-                if st.button('Cancel removal', key='cancel_remove_range'):
-                    st.session_state.pop('pending_remove_range', None)
-                    st.rerun()
+            if st.button('Remove selected brand data for these dates', type='secondary', key='remove_brand_date_range'):
+                if not isinstance(remove_start, type(pd.Timestamp.today().date())) or not isinstance(remove_end, type(pd.Timestamp.today().date())):
+                    st.error('Choose both a start date and an end date.')
+                elif remove_start > remove_end:
+                    st.error('The start date must be on or before the end date.')
+                else:
+                    st.session_state['pending_remove_range'] = {
+                        'brand': remove_brand,
+                        'start': remove_start.isoformat(),
+                        'end': remove_end.isoformat(),
+                    }
+            pending_remove = st.session_state.get('pending_remove_range')
+            if pending_remove:
+                st.warning(
+                    f"Remove all {pending_remove['brand']} rows with manifested dates from "
+                    f"{pending_remove['start']} through {pending_remove['end']}? This cannot be undone unless you upload the data again."
+                )
+                yes_col, no_col = st.columns(2)
+                with yes_col:
+                    if st.button('Confirm date-range removal', type='primary', key='confirm_remove_range'):
+                        start_remove = pd.Timestamp(pending_remove['start']).date()
+                        end_remove = pd.Timestamp(pending_remove['end']).date()
+                        current = st.session_state.dataset
+                        row_dates = pd.to_datetime(current[DATE_COL], errors='coerce').dt.date
+                        target_brand = current['brand'].astype(str).str.casefold().eq(pending_remove['brand'].casefold())
+                        target_dates = row_dates.ge(start_remove) & row_dates.le(end_remove)
+                        removed_count = int((target_brand & target_dates).sum())
+                        st.session_state.dataset = current.loc[~(target_brand & target_dates)].reset_index(drop=True)
+                        save_dataset(st.session_state.dataset)
+                        st.session_state.pop('pending_remove_range', None)
+                        st.success(f"Removed {removed_count:,} rows for {pending_remove['brand']} from {start_remove} through {end_remove}. Other brands and dates were retained.")
+                        st.rerun()
+                with no_col:
+                    if st.button('Cancel removal', key='cancel_remove_range'):
+                        st.session_state.pop('pending_remove_range', None)
+                        st.rerun()
 
-        if st.button('Reset to bundled September datasets',type='secondary'):
-            st.session_state.dataset=load_defaults()
-            save_dataset(st.session_state.dataset)
-            st.rerun()
+            if st.button('Reset to bundled September datasets',type='secondary'):
+                st.session_state.dataset=load_defaults()
+                save_dataset(st.session_state.dataset)
+                st.rerun()
 
 elif page=='Reports':
     st.subheader('Reports & Downloads'); st.caption(filter_text)
