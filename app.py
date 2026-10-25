@@ -552,6 +552,52 @@ elif page=='Data Management':
         if quality['Unknown/unmapped status rows']:
             st.warning(f"{quality['Unknown/unmapped status rows']:,} rows have source statuses outside the recognized outcome groups. Review the mapping before relying on outcome rates.")
         with st.expander('Preview combined data'): st.dataframe(data.head(100),use_container_width=True)
+        st.divider()
+        st.markdown('**Remove data for a specific brand and date range**')
+        st.caption('Use this to remove a test upload (for example, Freely from 01–05 October) without deleting the brand’s other dates.')
+        remove_brands = sorted(data['brand'].dropna().astype(str).unique().tolist())
+        remove_brand = st.selectbox('Brand to remove from', remove_brands, key='remove_range_brand')
+        remove_start, remove_end = st.date_input(
+            'Dates to remove',
+            value=(pd.Timestamp('2026-10-01').date(), pd.Timestamp('2026-10-05').date()),
+            key='remove_range_dates'
+        )
+        if st.button('Remove selected brand data for these dates', type='secondary', key='remove_brand_date_range'):
+            if not isinstance(remove_start, type(pd.Timestamp.today().date())) or not isinstance(remove_end, type(pd.Timestamp.today().date())):
+                st.error('Choose both a start date and an end date.')
+            elif remove_start > remove_end:
+                st.error('The start date must be on or before the end date.')
+            else:
+                st.session_state['pending_remove_range'] = {
+                    'brand': remove_brand,
+                    'start': remove_start.isoformat(),
+                    'end': remove_end.isoformat(),
+                }
+        pending_remove = st.session_state.get('pending_remove_range')
+        if pending_remove:
+            st.warning(
+                f"Remove all {pending_remove['brand']} rows with manifested dates from "
+                f"{pending_remove['start']} through {pending_remove['end']}? This cannot be undone in the current session."
+            )
+            yes_col, no_col = st.columns(2)
+            with yes_col:
+                if st.button('Confirm date-range removal', type='primary', key='confirm_remove_range'):
+                    start_remove = pd.Timestamp(pending_remove['start']).date()
+                    end_remove = pd.Timestamp(pending_remove['end']).date()
+                    current = st.session_state.dataset
+                    row_dates = pd.to_datetime(current[DATE_COL], errors='coerce').dt.date
+                    target_brand = current['brand'].astype(str).str.casefold().eq(pending_remove['brand'].casefold())
+                    target_dates = row_dates.ge(start_remove) & row_dates.le(end_remove)
+                    removed_count = int((target_brand & target_dates).sum())
+                    st.session_state.dataset = current.loc[~(target_brand & target_dates)].reset_index(drop=True)
+                    st.session_state.pop('pending_remove_range', None)
+                    st.success(f"Removed {removed_count:,} rows for {pending_remove['brand']} from {start_remove} through {end_remove}. Other brands and dates were retained.")
+                    st.rerun()
+            with no_col:
+                if st.button('Cancel removal', key='cancel_remove_range'):
+                    st.session_state.pop('pending_remove_range', None)
+                    st.rerun()
+
         if st.button('Reset to bundled September datasets',type='secondary'):
             st.session_state.dataset=load_defaults(); st.rerun()
 
