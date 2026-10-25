@@ -6,6 +6,7 @@ import hmac
 import os
 import sqlite3
 import time
+import time
 from datetime import datetime, timezone
 
 ROLES = ("Admin", "Analyst", "Viewer")
@@ -40,6 +41,12 @@ def init_auth_db(db_path):
         )""")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_shipiq_users_email ON shipiq_users(email)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_shipiq_audit_created ON shipiq_audit_logs(created_at)")
+        conn.execute("""CREATE TABLE IF NOT EXISTS shipiq_login_attempts (
+            email TEXT PRIMARY KEY COLLATE NOCASE,
+            failures INTEGER NOT NULL DEFAULT 0,
+            window_start REAL NOT NULL,
+            locked_until REAL NOT NULL DEFAULT 0
+        )""")
 
 def _hash_password(password):
     salt = os.urandom(16)
@@ -102,15 +109,31 @@ def register_user(db_path, full_name, email, password):
 
 def authenticate(db_path, email, password):
     init_auth_db(db_path)
-    email = (email or "").strip().lower()
+    email = (email or "").strip().lower()[:254]
+    now_epoch = time.time()
     with _connect(db_path) as conn:
+        conn.execute("BEGIN IMMEDIATE")
+        attempt = conn.execute("SELECT failures,window_start,locked_until FROM shipiq_login_attempts WHERE email=? COLLATE NOCASE", (email,)).fetchone()
+        if attempt and attempt["locked_until"] > now_epoch:
+            return None, "Too many failed sign-in attempts. Try again in about 15 minutes."
+        if attempt and now_epoch - attempt["window_start"] > 900:
+            conn.execute("DELETE FROM shipiq_login_attempts WHERE email=? COLLATE NOCASE", (email,))
+            attempt = None
         row = conn.execute("SELECT * FROM shipiq_users WHERE email=? COLLATE NOCASE", (email,)).fetchone()
-        # A dummy hash check for unknown addresses reduces obvious timing differences.
-        if row is None:
+        valid = False
+        if row is not None:
+            valid = bool(row["is_active"]) and _verify_password(password or "", row["password_hash"])
+        else:
+            # A dummy hash check for unknown addresses reduces obvious timing differences.
             _verify_password(password or "", "pbkdf2_sha256$310000$00000000000000000000000000000000$" + ("0" * 64))
+        if not valid:
+            failures = int(attempt["failures"]) + 1 if attempt else 1
+            window_start = float(attempt["window_start"]) if attempt else now_epoch
+            locked_until = now_epoch + 900 if failures >= 5 else 0
+            conn.execute("INSERT INTO shipiq_login_attempts(email,failures,window_start,locked_until) VALUES(?,?,?,?) ON CONFLICT(email) DO UPDATE SET failures=excluded.failures,window_start=excluded.window_start,locked_until=excluded.locked_until",
+                         (email, failures, window_start, locked_until))
             return None, "Email or password is incorrect."
-        if not row["is_active"] or not _verify_password(password or "", row["password_hash"]):
-            return None, "Email or password is incorrect, or this account is inactive."
+        conn.execute("DELETE FROM shipiq_login_attempts WHERE email=? COLLATE NOCASE", (email,))
         now = _now()
         conn.execute("UPDATE shipiq_users SET last_login=?, updated_at=? WHERE id=?", (now, now, row["id"]))
         _audit(conn, row["id"], "login", row["id"])
