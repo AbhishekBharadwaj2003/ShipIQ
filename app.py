@@ -26,6 +26,30 @@ st.markdown('''<style>
 :root { --shipiq-bg:#0B1220; --shipiq-surface:#121D2D; --shipiq-surface2:#19283A; --shipiq-line:#263B50; --shipiq-gold:#35D0C5; --shipiq-ivory:#EDF7FF; --shipiq-muted:#9AAFC2; }
 html, body, [class*="css"] { font-family:'DM Sans',sans-serif; }
 .stApp { background:radial-gradient(ellipse at 12% 0%,rgba(53,208,197,.10),transparent 35%),#0B1220; color:var(--shipiq-ivory); }
+/* Quiklee brand watermark: subdued, angled, and non-interactive */
+.stApp { position:relative; isolation:isolate; }
+.stApp::before {
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background-image:url("https://raw.githubusercontent.com/AbhishekBharadwaj2003/ShipIQ/main/data/quiklee_india_cover.jpg");
+  background-repeat:no-repeat;
+  background-position:center 54%;
+  background-size:min(78vw, 1080px) auto;
+  opacity:.065;
+  transform:rotate(-12deg) scale(1.02);
+  transform-origin:center;
+}
+.stApp > header,
+.stApp > div {
+  position:relative;
+  z-index:1;
+}
+@media (max-width: 768px) {
+  .stApp::before { background-size:92vw auto; opacity:.045; }
+}
 .block-container { padding-top:1.6rem; padding-bottom:3rem; max-width:1520px; }
 [data-testid="stHeader"] { background:rgba(11,18,32,.90); }
 [data-testid="stSidebar"] { background:linear-gradient(180deg,#121D2D 0%,#0D1624 100%); border-right:1px solid var(--shipiq-line); }
