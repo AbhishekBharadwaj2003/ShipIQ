@@ -76,13 +76,15 @@ def data_quality_summary(df):
         return {
             'Rows loaded': 0, 'Rows with invalid/missing manifested date': 0,
             'Rows with missing shipment status': 0, 'Rows with missing courier': 0,
-            'Rows with missing destination state': 0, 'Duplicate shipment-ID rows': 0,
-            'Unknown/unmapped status rows': 0,
+            'Rows with missing destination state': 0, 'Rows with missing shipment ID': 0,
+            'Duplicate shipment-ID rows': 0, 'Unknown/unmapped status rows': 0,
         }
     duplicate_rows = 0
+    missing_ids = int(len(df))
     if 'shipment_id' in df.columns:
         ids = df['shipment_id'].astype('string').str.strip()
         valid_ids = ids.notna() & ids.ne('')
+        missing_ids = int((~valid_ids).sum())
         duplicate_rows = int(ids[valid_ids].duplicated(keep=False).sum())
     known = {'Delivered', 'RTO', 'Cancelled', 'Lost/Damaged', 'Failed/Undelivered',
              'Manifested/Pending', 'In Transit/Attempting', 'Unknown'}
@@ -92,6 +94,7 @@ def data_quality_summary(df):
         'Rows with missing shipment status': int(df[STATUS_COL].isna().sum()) if STATUS_COL in df.columns else int(len(df)),
         'Rows with missing courier': int(df['courier_name'].isna().sum() + df['courier_name'].astype('string').str.strip().eq('').sum()) if 'courier_name' in df.columns else int(len(df)),
         'Rows with missing destination state': int(df['drop_location_state'].isna().sum() + df['drop_location_state'].astype('string').str.strip().eq('').sum()) if 'drop_location_state' in df.columns else int(len(df)),
+        'Rows with missing shipment ID': missing_ids,
         'Duplicate shipment-ID rows': duplicate_rows,
         'Unknown/unmapped status rows': int((~df.get('normalized_status', pd.Series('Unknown', index=df.index)).isin(known)).sum()),
     }
@@ -159,7 +162,8 @@ def kpi_row(df):
 
 def rate_table(df, by):
     if df.empty: return pd.DataFrame()
-    g=df.groupby(by, dropna=False).agg(shipments=('shipment_id' if 'shipment_id' in df.columns else 'brand','size'), delivered=('is_delivered','sum'), rto=('is_rto','sum'), cancelled=('is_cancelled','sum'), finalized=('is_final','sum')).reset_index()
+    # Count source rows, not non-null shipment IDs, so missing IDs cannot silently lower shipment totals.
+    g=df.groupby(by, dropna=False).agg(shipments=('normalized_status','size'), delivered=('is_delivered','sum'), rto=('is_rto','sum'), cancelled=('is_cancelled','sum'), finalized=('is_final','sum')).reset_index()
     g['delivery_rate_%']=np.where(g.finalized>0,100*g.delivered/g.finalized,0).round(1)
     g['rto_rate_%']=np.where(g.finalized>0,100*g.rto/g.finalized,0).round(1)
     g['cancellation_rate_%']=np.where(g.finalized>0,100*g.cancelled/g.finalized,0).round(1)
