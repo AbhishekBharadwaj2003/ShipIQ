@@ -572,7 +572,7 @@ if 'custom_brands' not in st.session_state: st.session_state.custom_brands=[]
 with st.sidebar:
     st.markdown('## 📦 ShipIQ')
     st.caption('Shipment Intelligence Control Tower')
-    st.markdown("**" + "{AUTH_USER['full_name']}" + "**")
+    st.markdown(f"**{AUTH_USER['full_name']}**")
     st.caption(AUTH_USER['email'] + " · " + ROLE + (" · Primary Admin" if AUTH_USER["is_primary_admin"] else ""))
     if st.button("Sign out", key="shipiq_sign_out", use_container_width=True):
         st.session_state.pop("auth_user", None)
