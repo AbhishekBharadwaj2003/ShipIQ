@@ -532,26 +532,6 @@ elif page=='Data Management':
                         st.session_state.pop(f'confirm_delete_brand_{brand_key}', None)
                         st.rerun()
 
-        st.subheader('Data quality validation')
-        quality = data_quality_summary(data)
-        q1, q2 = st.columns(2)
-        with q1:
-            st.dataframe(pd.DataFrame({'Check': list(quality.keys()), 'Count': list(quality.values())}),
-                         use_container_width=True, hide_index=True)
-        with q2:
-            status_check = data.groupby(['shipment_status', 'normalized_status'], dropna=False).size().reset_index(name='rows') if STATUS_COL in data.columns else pd.DataFrame()
-            if not status_check.empty:
-                st.markdown('**Source status → normalized status**')
-                st.dataframe(status_check.sort_values('rows', ascending=False), use_container_width=True, hide_index=True)
-        if quality['Rows with missing shipment ID']:
-            st.warning(f"{quality['Rows with missing shipment ID']:,} rows have no usable shipment ID. They are retained and still counted as source rows; unique-shipment counts may therefore be lower than row counts.")
-        if quality['Duplicate shipment-ID rows']:
-            st.warning(f"Found {quality['Duplicate shipment-ID rows']:,} rows whose shipment ID appears more than once. These rows are retained, not silently removed; confirm whether repeated IDs are valid records before interpreting totals.")
-        if quality['Rows with invalid/missing manifested date']:
-            st.warning(f"{quality['Rows with invalid/missing manifested date']:,} rows have no usable manifested date and will be excluded from date-filtered views.")
-        if quality['Unknown/unmapped status rows']:
-            st.warning(f"{quality['Unknown/unmapped status rows']:,} rows have source statuses outside the recognized outcome groups. Review the mapping before relying on outcome rates.")
-        with st.expander('Preview combined data'): st.dataframe(data.head(100),use_container_width=True)
         st.divider()
         st.markdown('**Remove data for a specific brand and date range**')
         st.caption('Use this to remove a test upload (for example, Freely from 01–05 October) without deleting the brand’s other dates.')
