@@ -36,31 +36,39 @@ def load_excel(path, brand):
     return df
 
 def normalize_status(v):
-    """Map source statuses to outcome groups without treating 'undelivered' as 'delivered'."""
+    """Normalize source statuses while distinguishing completed RTO from an RTO in progress."""
     if pd.isna(v) or not str(v).strip():
         return 'Unknown'
     s = re.sub(r'\s+', ' ', str(v).strip().lower())
-    # Outcomes that must take precedence over the substring "deliver".
-    if any(x in s for x in ['rto', 'return to origin', 'returned to origin', 'return-to-origin']):
-        return 'RTO'
+
+    # Explicit final outcomes first. An RTO workflow is not a completed return until
+    # the source status confirms the shipment was returned/delivered back.
     if any(x in s for x in ['cancel', 'voided']):
         return 'Cancelled'
+    if any(x in s for x in ['lost', 'damage', 'destroy']):
+        return 'Lost/Damaged'
     if any(x in s for x in ['undeliver', 'not delivered', 'delivery failed', 'failed delivery',
                             'failed', 'exception', 'attempt failed', 'non-delivery']):
         return 'Failed/Undelivered'
-    if any(x in s for x in ['lost', 'damage', 'destroy']):
-        return 'Lost/Damaged'
-    # "Out for delivery" and "delivery attempted" are not successful deliveries.
+    if any(x in s for x in ['rto delivered', 'returned to origin', 'return to origin',
+                            'return-to-origin delivered', 'returned']):
+        return 'RTO'
+
+    # RTO initiation, transit, or delivery attempts remain in progress unless the
+    # source explicitly confirms a completed return.
+    if 'rto' in s and any(x in s for x in ['transit', 'out for delivery', 'requested',
+                                           'initiated', 'in process', 'processing', 'pending']):
+        return 'In Transit/Attempting'
     if any(x in s for x in ['out for delivery', 'delivery attempted', 'attempting delivery',
                             'transit', 'shipped', 'picked', 'ndr', 'reached',
                             'in warehouse', 'in hub', 'pickup complete', 'picked up']):
         return 'In Transit/Attempting'
-    if any(x in s for x in ['manifest', 'pickup pending', 'ready to ship', 'label', 'booked']):
+    if any(x in s for x in ['manifest', 'pickup pending', 'ready to ship', 'label',
+                            'booked', 'order placed']):
         return 'Manifested/Pending'
     if 'deliver' in s or s in {'complete', 'completed', 'success', 'successful'}:
         return 'Delivered'
     return str(v).strip().title()
-
 
 def data_quality_summary(df):
     """Return transparent data-quality checks; never silently discard source rows."""
