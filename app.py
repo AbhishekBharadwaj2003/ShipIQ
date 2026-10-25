@@ -101,7 +101,7 @@ section[data-testid="stMain"] {
 [data-testid="stMain"] p,
 [data-testid="stMain"] label,
 [data-testid="stMain"] [data-testid="stMarkdownContainer"] {
-    color: #E8FFFA;
+    color: #EDF7FF;
 }
 [data-testid="stMetric"] {
     background: linear-gradient(145deg, #121D2D, #19283A);
@@ -129,7 +129,7 @@ section[data-testid="stMain"] {
 }
 [data-testid="stMain"] button[kind="primary"] {
     background: #19283A !important;
-    border: 1px solid #2DD4BF !important;
+    border: 1px solid #35D0C5 !important;
     color: #EDF7FF !important;
 }
 [data-testid="stMain"] button[kind="secondary"] {
