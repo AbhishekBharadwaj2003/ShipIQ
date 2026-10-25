@@ -188,20 +188,36 @@ def metrics(df):
     }
 
 
-def kpi_row(df):
+def kpi_row(df, previous_df=None):
     m=metrics(df)
+    previous = metrics(previous_df) if previous_df is not None and not previous_df.empty else None
     cols=st.columns(6)
-    vals=[
-        ('Manifested', f"{m['Shipments']:,}"),
-        ('Delivered', f"{m['Delivered']:,}"),
-        ('RTO Delivered', f"{m['RTO']:,}"),
-        ('Cancelled', f"{m['Cancelled']:,}"),
-        ('Delivery rate*', f"{m['Delivery rate']:.2f}%"),
-        ('RTO rate*', f"{m['RTO rate']:.2f}%"),
+    definitions=[
+        ('Manifested', 'Shipments', 'count'),
+        ('Delivered', 'Delivered', 'count'),
+        ('RTO Delivered', 'RTO', 'count'),
+        ('Cancelled', 'Cancelled', 'count'),
+        ('Delivery rate*', 'Delivery rate', 'rate'),
+        ('RTO rate*', 'RTO rate', 'rate'),
     ]
-    for c,(label,val) in zip(cols,vals):
-        c.metric(label,val)
-    st.caption('* Delivery and RTO rates are calculated from completed delivery and completed RTO outcomes only; cancelled, pending, failed, and unknown shipments are excluded.')
+    for col,(label,key,kind) in zip(cols,definitions):
+        value = m[key]
+        display = f"{value:,.2f}%" if kind == 'rate' else f"{value:,}"
+        delta = None
+        if previous is not None:
+            prev_value = previous[key]
+            if kind == 'rate':
+                delta = f"{value - prev_value:+.2f} pp vs prev day"
+            elif prev_value:
+                delta = f"{(value - prev_value) / prev_value * 100:+.1f}% vs prev day"
+            elif value:
+                delta = "New vs prev day"
+            else:
+                delta = "0.0% vs prev day"
+        col.metric(label, display, delta=delta, delta_color="inverse" if key in ('RTO', 'Cancelled', 'RTO rate') else "normal")
+    if previous_df is None or previous_df.empty:
+        st.caption('Day-over-day comparison is unavailable because no shipments were found for the previous calendar day.')
+    st.caption('* Delivery and RTO rates use completed deliveries + completed RTOs as the denominator. Day-over-day changes compare with the previous calendar day.')
 
 def rate_table(df, by):
     if df.empty: return pd.DataFrame()
@@ -276,6 +292,20 @@ def apply_filters(data):
     return d
 
 filtered=apply_filters(st.session_state.dataset)
+
+# For single-date views, compare against the previous calendar day using the same brand selection.
+previous_day_data = pd.DataFrame()
+if start_d is not None and end_d is not None and start_d == end_d:
+    previous_day = start_d - pd.Timedelta(days=1)
+    previous_day_data = st.session_state.dataset.copy()
+    if not previous_day_data.empty:
+        previous_manifested = pd.to_datetime(previous_day_data[DATE_COL], errors='coerce').dt.date
+        previous_day_data = previous_day_data[previous_manifested == previous_day]
+        if chosen_brands:
+            previous_day_data = previous_day_data[previous_day_data['brand'].astype(str).isin(chosen_brands)]
+        else:
+            previous_day_data = previous_day_data.iloc[0:0]
+
 filter_text=f"Manifested date: {start_d or 'All'} to {end_d or 'All'} | Brands: {', '.join(chosen_brands) if chosen_brands else 'None'}"
 
 st.markdown('<div class="shipiq-kicker">PATTERNS · LOGISTICS INTELLIGENCE</div>',unsafe_allow_html=True)
@@ -288,7 +318,9 @@ if page=='Executive Overview':
     st.caption(filter_text)
     if filtered.empty: st.info('No shipments match the current filters. Upload data or adjust the date/brand filters.')
     else:
-        kpi_row(filtered)
+        kpi_row(filtered, previous_day_data if start_d is not None and end_d is not None and start_d == end_d else None)
+        if start_d is not None and end_d is not None and start_d == end_d:
+            st.caption(f"Comparing {start_d.strftime('%d %b %Y')} with {(start_d - pd.Timedelta(days=1)).strftime('%d %b %Y')}.")
         c1,c2=st.columns([1.5,1])
         with c1:
             daily=filtered.dropna(subset=[DATE_COL]).assign(manifest_day=lambda x:pd.to_datetime(x[DATE_COL]).dt.date).groupby('manifest_day').size().reset_index(name='shipments')
