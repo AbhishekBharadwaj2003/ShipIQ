@@ -42,7 +42,7 @@ html, body, [class*="css"] { font-family:'DM Sans',sans-serif; }
   width:min(78vw, 1120px);
   max-height:76vh;
   object-fit:contain;
-  opacity:.13;
+  opacity:1;
   transform:rotate(-12deg);
   filter:grayscale(1) brightness(1.8);
 }
@@ -56,7 +56,7 @@ html, body, [class*="css"] { font-family:'DM Sans',sans-serif; }
   z-index:3;
 }
 @media (max-width: 768px) {
-  .shipiq-watermark-layer img { width:94vw; max-height:58vh; opacity:.09; }
+  .shipiq-watermark-layer img { width:94vw; max-height:58vh; opacity:1; }
 }
 </style>''', unsafe_allow_html=True)
 st.markdown('''<div class="shipiq-watermark-layer"><img src="https://raw.githubusercontent.com/AbhishekBharadwaj2003/ShipIQ/main/data/quiklee_india_cover.jpg" alt="" aria-hidden="true"></div>''', unsafe_allow_html=True)
