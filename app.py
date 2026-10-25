@@ -21,33 +21,33 @@ st.set_page_config(page_title='ShipIQ | Shipment Intelligence', page_icon='📦'
 
 st.markdown('''<style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
-:root { --shipiq-bg:#110D12; --shipiq-surface:#1D171F; --shipiq-surface2:#29202B; --shipiq-line:#493044; --shipiq-gold:#FF4F9A; --shipiq-ivory:#FFF5FA; --shipiq-muted:#BCAAB8; }
+:root { --shipiq-bg:#0B1220; --shipiq-surface:#121D2D; --shipiq-surface2:#19283A; --shipiq-line:#263B50; --shipiq-gold:#35D0C5; --shipiq-ivory:#EDF7FF; --shipiq-muted:#9AAFC2; }
 html, body, [class*="css"] { font-family:'DM Sans',sans-serif; }
-.stApp { background:radial-gradient(ellipse at 12% 0%,rgba(255,63,142,.10),transparent 35%),#110D12; color:var(--shipiq-ivory); }
+.stApp { background:radial-gradient(ellipse at 12% 0%,rgba(53,208,197,.10),transparent 35%),#0B1220; color:var(--shipiq-ivory); }
 .block-container { padding-top:1.6rem; padding-bottom:3rem; max-width:1520px; }
-[data-testid="stHeader"] { background:rgba(17,13,18,.90); }
-[data-testid="stSidebar"] { background:linear-gradient(180deg,#211722 0%,#151016 100%); border-right:1px solid var(--shipiq-line); }
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color:#E8D6E2; }
+[data-testid="stHeader"] { background:rgba(11,18,32,.90); }
+[data-testid="stSidebar"] { background:linear-gradient(180deg,#121D2D 0%,#0D1624 100%); border-right:1px solid var(--shipiq-line); }
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color:#C7D7E7; }
 [data-testid="stSidebar"] [data-testid="stRadio"] label { padding:.25rem 0; }
 h1,h2,h3,h4 { font-family:'Manrope',sans-serif !important; letter-spacing:-.035em; color:var(--shipiq-ivory); }
 h1 { font-weight:800 !important; } h2 { font-weight:750 !important; } h3 { font-weight:700 !important; }
 .shipiq-kicker { font-size:.72rem; letter-spacing:.2em; text-transform:uppercase; color:var(--shipiq-gold); font-weight:800; }
 .shipiq-title { font-family:'Manrope',sans-serif; font-size:2.35rem; font-weight:800; letter-spacing:-.055em; line-height:1.08; color:var(--shipiq-ivory); }
 .shipiq-sub { color:var(--shipiq-muted); font-size:1rem; margin-top:.55rem; line-height:1.65; }
-[data-testid="stMetric"] { background:linear-gradient(145deg,#291D29,#1C151E); border:1px solid var(--shipiq-line); border-radius:15px; padding:19px 20px; box-shadow:0 10px 26px rgba(0,0,0,.12); transition:transform .18s ease,border-color .18s ease; }
-[data-testid="stMetric"]:hover { transform:translateY(-2px); border-color:rgba(255,79,154,.65); }
-[data-testid="stMetricLabel"] { color:#C8B5C4 !important; font-size:.84rem !important; }
+[data-testid="stMetric"] { background:linear-gradient(145deg,#19283A,#121D2D); border:1px solid var(--shipiq-line); border-radius:15px; padding:19px 20px; box-shadow:0 10px 26px rgba(0,0,0,.12); transition:transform .18s ease,border-color .18s ease; }
+[data-testid="stMetric"]:hover { transform:translateY(-2px); border-color:rgba(53,208,197,.60); }
+[data-testid="stMetricLabel"] { color:#A9BED1 !important; font-size:.84rem !important; }
 [data-testid="stMetricValue"] { color:var(--shipiq-ivory) !important; font-family:'Manrope',sans-serif; font-weight:800; }
 [data-testid="stMetricDelta"] { color:var(--shipiq-gold) !important; }
 [data-testid="stVerticalBlockBorderWrapper"] { border-color:var(--shipiq-line) !important; border-radius:15px !important; }
 [data-testid="stExpander"] { border:1px solid var(--shipiq-line); border-radius:12px; background:rgba(32,32,32,.7); }
 [data-testid="stDataFrame"],[data-testid="stTable"] { border:1px solid var(--shipiq-line); border-radius:12px; overflow:hidden; }
-[data-testid="stTextInput"] input,[data-testid="stNumberInput"] input,[data-testid="stDateInput"] input,[data-testid="stSelectbox"] [data-baseweb="select"] > div,[data-testid="stMultiSelect"] [data-baseweb="select"] > div,[data-testid="stTextArea"] textarea { background:#261D28 !important; border-color:#594154 !important; border-radius:9px !important; color:var(--shipiq-ivory) !important; }
-[data-testid="stFileUploader"] section { background:rgba(34,23,35,.78); border:1px dashed #70465F; border-radius:12px; }
+[data-testid="stTextInput"] input,[data-testid="stNumberInput"] input,[data-testid="stDateInput"] input,[data-testid="stSelectbox"] [data-baseweb="select"] > div,[data-testid="stMultiSelect"] [data-baseweb="select"] > div,[data-testid="stTextArea"] textarea { background:#172638 !important; border-color:#355268 !important; border-radius:9px !important; color:var(--shipiq-ivory) !important; }
+[data-testid="stFileUploader"] section { background:rgba(18,29,45,.78); border:1px dashed #3D7180; border-radius:12px; }
 [data-testid="stFileUploader"] section:hover { border-color:var(--shipiq-gold); }
-.stButton > button,[data-testid="stFormSubmitButton"] > button { border-radius:9px; border:1px solid #FF4F9A; background:linear-gradient(110deg,#FF6CAB,#F32F83); color:#240F1B; font-weight:700; padding:.55rem 1rem; box-shadow:none; transition:transform .16s ease,filter .16s ease; }
-.stButton > button:hover,[data-testid="stFormSubmitButton"] > button:hover { filter:brightness(1.08); transform:translateY(-1px); border-color:#FF9CC6; color:#240F1B; }
-.stButton > button[kind="secondary"] { background:#2C202D; border-color:#4A453C; color:#FBEAF4; box-shadow:none; }
+.stButton > button,[data-testid="stFormSubmitButton"] > button { border-radius:9px; border:1px solid #35D0C5; background:linear-gradient(110deg,#35D0C5,#159AAB); color:#071B25; font-weight:700; padding:.55rem 1rem; box-shadow:none; transition:transform .16s ease,filter .16s ease; }
+.stButton > button:hover,[data-testid="stFormSubmitButton"] > button:hover { filter:brightness(1.08); transform:translateY(-1px); border-color:#8CF2E9; color:#071B25; }
+.stButton > button[kind="secondary"] { background:#1A2B3D; border-color:#4A453C; color:#E3F6FF; box-shadow:none; }
 [data-baseweb="tab-list"] { gap:.35rem; border-bottom:1px solid var(--shipiq-line); }
 [data-baseweb="tab"] { background:transparent; border-radius:9px 9px 0 0; padding:.65rem 1rem; color:#B8B0A4; }
 [data-baseweb="tab"][aria-selected="true"] { color:var(--shipiq-gold); border-bottom-color:var(--shipiq-gold); }
