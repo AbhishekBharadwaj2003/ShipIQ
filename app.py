@@ -442,6 +442,25 @@ def kpi_row(df, previous_df=None):
                         'No recognized delivery-attempt count column exists in this dataset.'))
         if high_attempts is not None:
             st.caption(f'⚠️ {high_attempts:,} shipments with >2 attempts')
+            if high_attempts:
+                attention = df.loc[attempt_series.index[attempt_series > 2]].copy()
+                attention['_attempt_count'] = pd.to_numeric(attention[attempt_col], errors='coerce')
+                attention = attention.sort_values('_attempt_count', ascending=False)
+                preferred_cols = [
+                    'shipment_id', 'brand', 'courier_name', STATUS_COL,
+                    'manifested_date', 'pickup_date', 'delivery_rto_date',
+                    'drop_location_city', 'drop_location_state'
+                ]
+                display_cols = [c for c in preferred_cols if c in attention.columns]
+                # Ensure the attempt count is visible even when source naming varies.
+                attention = attention[display_cols + ['_attempt_count']].rename(
+                    columns={'_attempt_count': 'delivery_attempts'}
+                )
+                st.markdown('##### ⚠️ Shipments requiring attention')
+                st.caption('Shipments with more than 2 recorded delivery attempts, sorted from highest to lowest.')
+                st.dataframe(attention, use_container_width=True, hide_index=True)
+            elif attempt_avg is not None:
+                st.caption('No shipments exceeded 2 recorded attempts in the selected data.')
     with op2:
         mp_display = f'{manifest_pickup.mean():.2f} days' if not manifest_pickup.empty else 'N/A'
         st.metric('Manifest → Pickup', mp_display,
