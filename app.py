@@ -156,8 +156,8 @@ def metrics(df):
 
 def kpi_row(df):
     m=metrics(df)
-    cols=st.columns(6)
-    vals=[('Shipments',f"{m['Shipments']:,}"),('Delivered',f"{m['Delivered']:,}"),('Delivery rate',f"{m['Delivery rate']:.1f}%"),('RTO rate',f"{m['RTO rate']:.1f}%"),('Cancellations',f"{m['Cancelled']:,}"),('Pending / in progress',f"{m['Pending / in progress']:,}")]
+    cols=st.columns(5)
+    vals=[('Shipments',f"{m['Shipments']:,}"),('Delivered',f"{m['Delivered']:,}"),('Delivery rate',f"{m['Delivery rate']:.1f}%"),('RTO rate',f"{m['RTO rate']:.1f}%"),('Cancellations',f"{m['Cancelled']:,}")]
     for c,(label,val) in zip(cols,vals): c.metric(label,val)
 
 def rate_table(df, by):
