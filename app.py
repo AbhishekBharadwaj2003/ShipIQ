@@ -1,5 +1,6 @@
 from pathlib import Path
 from io import BytesIO, StringIO
+import json
 import sqlite3
 import re
 import pandas as pd
@@ -170,34 +171,96 @@ def load_defaults():
             except Exception as e: st.warning(f'Could not load {fname}: {e}')
     return pd.concat(parts, ignore_index=True, sort=False) if parts else pd.DataFrame()
 
-# Local SQLite persistence: uploads and removals survive browser refreshes and app restarts.
-# For hosted deployments, use a managed external database because the app filesystem may be ephemeral.
+# Local SQLite database designed for ongoing multi-brand, multi-month shipment history.
+# Each shipment row is stored separately with indexed brand/date fields; payload_json preserves
+# the flexible source columns without forcing every brand to have an identical schema.
 DB_PATH = APP_DIR / 'shipiq_data.sqlite3'
 
+def _init_database(conn):
+    conn.execute('PRAGMA journal_mode=WAL')
+    conn.execute('PRAGMA busy_timeout=10000')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS shipments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            brand TEXT,
+            manifested_date TEXT,
+            shipment_id TEXT,
+            payload_json TEXT NOT NULL
+        )
+    ''')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_shipments_brand_date ON shipments(brand, manifested_date)')
+    conn.execute('CREATE INDEX IF NOT EXISTS idx_shipments_id ON shipments(shipment_id)')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS shipiq_metadata (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+        )
+    ''')
+    conn.commit()
+
 def save_dataset(dataset):
-    payload = dataset.to_json(orient='records', date_format='iso')
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            'CREATE TABLE IF NOT EXISTS shipiq_state (id INTEGER PRIMARY KEY CHECK (id = 1), dataset_json TEXT NOT NULL)'
+    # Use a transaction so the prior saved dataset remains intact if writing fails.
+    records_json = dataset.to_json(orient='records', date_format='iso', date_unit='ms')
+    records = json.loads(records_json) if records_json else []
+    with sqlite3.connect(DB_PATH, timeout=10) as conn:
+        _init_database(conn)
+        conn.execute('BEGIN IMMEDIATE')
+        conn.execute('DELETE FROM shipments')
+        rows = []
+        for record in records:
+            brand = record.get('brand')
+            manifested = record.get(DATE_COL)
+            shipment_id = record.get('shipment_id')
+            rows.append((
+                None if brand is None else str(brand),
+                None if manifested is None else str(manifested)[:10],
+                None if shipment_id is None else str(shipment_id),
+                json.dumps(record, ensure_ascii=False, separators=(',', ':'))
+            ))
+        conn.executemany(
+            'INSERT INTO shipments (brand, manifested_date, shipment_id, payload_json) VALUES (?, ?, ?, ?)',
+            rows
         )
         conn.execute(
-            'INSERT INTO shipiq_state (id, dataset_json) VALUES (1, ?) '
-            'ON CONFLICT(id) DO UPDATE SET dataset_json=excluded.dataset_json',
-            (payload,)
+            "INSERT INTO shipiq_metadata (key, value) VALUES ('schema_version', '2') "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value"
         )
         conn.commit()
 
 def load_persisted_dataset():
     if not DB_PATH.exists():
         return None
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute(
-            'CREATE TABLE IF NOT EXISTS shipiq_state (id INTEGER PRIMARY KEY CHECK (id = 1), dataset_json TEXT NOT NULL)'
-        )
-        row = conn.execute('SELECT dataset_json FROM shipiq_state WHERE id = 1').fetchone()
-    if not row:
-        return None
-    stored = pd.read_json(StringIO(row[0]), orient='records', convert_dates=False)
+    with sqlite3.connect(DB_PATH, timeout=10) as conn:
+        _init_database(conn)
+        rows = conn.execute('SELECT payload_json FROM shipments ORDER BY id').fetchall()
+        # Migrate the previous single-JSON-row storage format automatically, if present.
+        if not rows:
+            old_table = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='shipiq_state'"
+            ).fetchone()
+            if old_table:
+                legacy = conn.execute('SELECT dataset_json FROM shipiq_state WHERE id = 1').fetchone()
+                if legacy and legacy[0]:
+                    old_records = json.loads(legacy[0])
+                    if old_records:
+                        legacy_df = pd.DataFrame(old_records)
+                        # Save in the new row-based schema after leaving this connection.
+                        migrated = legacy_df
+                    else:
+                        migrated = pd.DataFrame()
+                else:
+                    migrated = None
+            else:
+                migrated = None
+        else:
+            migrated = pd.DataFrame([json.loads(row[0]) for row in rows])
+    if not rows:
+        if migrated is None:
+            return None
+        save_dataset(migrated)
+        stored = migrated
+    else:
+        stored = pd.DataFrame([json.loads(row[0]) for row in rows])
     if stored.empty or 'brand' not in stored.columns:
         return stored
     parts = []
