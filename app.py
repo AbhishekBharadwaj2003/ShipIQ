@@ -3,6 +3,7 @@ from io import BytesIO, StringIO
 import json
 import sqlite3
 import re
+import base64
 import pandas as pd
 import numpy as np
 import streamlit as st
@@ -28,38 +29,41 @@ html, body, [class*="css"] { font-family:'DM Sans',sans-serif; }
 .stApp { background:radial-gradient(ellipse at 12% 0%,rgba(53,208,197,.10),transparent 35%),#0B1220; color:var(--shipiq-ivory); }
 /* Quiklee watermark: render as a real DOM layer, above the app background */
 .shipiq-watermark-layer {
-  position:fixed;
-  inset:0;
-  z-index:1;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  overflow:hidden;
-  pointer-events:none;
+  position:fixed !important;
+  inset:0 !important;
+  z-index:0 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  overflow:hidden !important;
+  pointer-events:none !important;
 }
 .shipiq-watermark-layer img {
-  display:block;
-  width:min(78vw, 1120px);
-  max-height:76vh;
-  object-fit:contain;
-  opacity:1;
-  transform:rotate(-12deg);
-  filter:grayscale(1) brightness(1.8);
+  display:block !important;
+  width:min(78vw, 1120px) !important;
+  max-height:76vh !important;
+  object-fit:contain !important;
+  opacity:1 !important;
+  transform:rotate(-12deg) !important;
+  filter:none !important;
 }
+[data-testid="stAppViewContainer"] { position:relative !important; }
 [data-testid="stAppViewContainer"] > .main {
-  position:relative;
-  z-index:2;
+  position:relative !important;
+  z-index:1 !important;
   background:transparent !important;
 }
-[data-testid="stSidebar"] {
-  position:relative;
-  z-index:3;
-}
+[data-testid="stSidebar"] { position:relative !important; z-index:2 !important; }
 @media (max-width: 768px) {
-  .shipiq-watermark-layer img { width:94vw; max-height:58vh; opacity:1; }
+  .shipiq-watermark-layer img { width:94vw !important; max-height:58vh !important; opacity:1 !important; }
 }
 </style>''', unsafe_allow_html=True)
-st.markdown('''<div class="shipiq-watermark-layer"><img src="https://raw.githubusercontent.com/AbhishekBharadwaj2003/ShipIQ/main/data/quiklee_india_cover.jpg" alt="" aria-hidden="true"></div>''', unsafe_allow_html=True)
+WATERMARK_PATH = DATA_DIR / 'quiklee_india_cover.jpg'
+if WATERMARK_PATH.exists():
+    WATERMARK_B64 = base64.b64encode(WATERMARK_PATH.read_bytes()).decode('ascii')
+    st.markdown(f'''<div class="shipiq-watermark-layer"><img src="data:image/jpeg;base64,{WATERMARK_B64}" alt="" aria-hidden="true"></div>''', unsafe_allow_html=True)
+else:
+    st.warning("Quiklee watermark image not found at data/quiklee_india_cover.jpg.")
 
 @st.cache_data(show_spinner=False)
 def load_excel(path, brand):
