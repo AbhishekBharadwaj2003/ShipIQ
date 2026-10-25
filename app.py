@@ -417,8 +417,39 @@ elif page=='Data Management':
     if data.empty: st.info('No datasets loaded.')
     else:
         summary=data.groupby('brand').agg(rows=('brand','size'),unique_shipments=('shipment_id','nunique') if 'shipment_id' in data.columns else ('brand','size'),couriers=('courier_name','nunique')).reset_index()
-        st.dataframe(summary,use_container_width=True,hide_index=True)
         st.caption(f"Current session total: {len(data):,} source rows. Original bundled September datasets load automatically when the app starts.")
+        st.markdown('**Stored brands**')
+        st.caption('Delete removes that brand’s rows from the current session only. Bundled source files are not deleted, and bundled brands will load again after an app restart unless persistent storage is added.')
+        for _, brand_row in summary.iterrows():
+            brand_name = str(brand_row['brand'])
+            brand_key = ''.join(ch if ch.isalnum() else '_' for ch in brand_name.lower())
+            brand_col, rows_col, shipments_col, couriers_col, action_col = st.columns([3, 1, 1.4, 1, 1.2])
+            with brand_col:
+                st.write(f"**{brand_name}**")
+            with rows_col:
+                st.metric('Rows', f"{int(brand_row['rows']):,}")
+            with shipments_col:
+                st.metric('Unique shipments', f"{int(brand_row['unique_shipments']):,}")
+            with couriers_col:
+                st.metric('Couriers', f"{int(brand_row['couriers']):,}")
+            with action_col:
+                if st.button('Delete',key=f'delete_brand_{brand_key}',type='secondary'):
+                    st.session_state[f'confirm_delete_brand_{brand_key}'] = True
+            if st.session_state.get(f'confirm_delete_brand_{brand_key}', False):
+                st.warning(f"Delete all {int(brand_row['rows']):,} rows for {brand_name} from the current session?")
+                confirm_col, cancel_col = st.columns([1, 1])
+                with confirm_col:
+                    if st.button(f"Confirm delete {brand_name}",key=f'confirm_delete_button_{brand_key}',type='primary'):
+                        st.session_state.dataset = st.session_state.dataset.loc[
+                            ~st.session_state.dataset['brand'].astype(str).str.casefold().eq(brand_name.casefold())
+                        ].reset_index(drop=True)
+                        st.session_state.pop(f'confirm_delete_brand_{brand_key}', None)
+                        st.success(f"Deleted {brand_name} from the current session.")
+                        st.rerun()
+                with cancel_col:
+                    if st.button('Cancel',key=f'cancel_delete_brand_{brand_key}'):
+                        st.session_state.pop(f'confirm_delete_brand_{brand_key}', None)
+                        st.rerun()
 
         st.subheader('Data quality validation')
         quality = data_quality_summary(data)
