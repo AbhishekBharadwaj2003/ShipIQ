@@ -365,6 +365,8 @@ elif page=='Data Management':
             if not status_check.empty:
                 st.markdown('**Source status → normalized status**')
                 st.dataframe(status_check.sort_values('rows', ascending=False), use_container_width=True, hide_index=True)
+        if quality['Rows with missing shipment ID']:
+            st.warning(f"{quality['Rows with missing shipment ID']:,} rows have no usable shipment ID. They are retained and still counted as source rows; unique-shipment counts may therefore be lower than row counts.")
         if quality['Duplicate shipment-ID rows']:
             st.warning(f"Found {quality['Duplicate shipment-ID rows']:,} rows whose shipment ID appears more than once. These rows are retained, not silently removed; confirm whether repeated IDs are valid records before interpreting totals.")
         if quality['Rows with invalid/missing manifested date']:
