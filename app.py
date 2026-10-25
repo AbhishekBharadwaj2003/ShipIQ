@@ -20,13 +20,84 @@ BRAND_FILES = {'Freely':'freely_patterns.xlsx','Kotart':'kotart_patterns.xlsx','
 st.set_page_config(page_title='ShipIQ | Shipment Intelligence', page_icon='📦', layout='wide', initial_sidebar_state='expanded')
 
 st.markdown('''<style>
-:root { --shipiq-ink:#152238; }
-.block-container {padding-top:1.3rem; padding-bottom:2rem; max-width:1500px;}
-[data-testid="stSidebar"] {border-right:1px solid rgba(128,128,128,.18)}
-.shipiq-kicker {font-size:.76rem;letter-spacing:.18em;text-transform:uppercase;color:#6b8afd;font-weight:700}
-.shipiq-title {font-size:2.05rem;font-weight:800;letter-spacing:-.04em;line-height:1.1}
-.shipiq-sub {color:#8b95a7;font-size:.95rem;margin-top:.4rem}
-[data-testid="stMetric"] {background:rgba(128,128,128,.06);border:1px solid rgba(128,128,128,.13);padding:15px 17px;border-radius:14px}
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+
+:root {
+  --shipiq-bg: #0b1120;
+  --shipiq-panel: #111a2d;
+  --shipiq-panel-2: #162238;
+  --shipiq-line: rgba(148, 163, 184, .16);
+  --shipiq-text: #edf4ff;
+  --shipiq-muted: #9aabc4;
+  --shipiq-cyan: #38d6c5;
+  --shipiq-blue: #6d8dff;
+}
+html, body, [class*="css"] { font-family: 'DM Sans', sans-serif; }
+.stApp {
+  background:
+    radial-gradient(ellipse at 12% 0%, rgba(56, 214, 197, .09), transparent 34%),
+    radial-gradient(ellipse at 92% 7%, rgba(109, 141, 255, .11), transparent 30%),
+    var(--shipiq-bg);
+  color: var(--shipiq-text);
+}
+.block-container { padding-top: 1.6rem; padding-bottom: 3rem; max-width: 1520px; }
+[data-testid="stHeader"] { background: rgba(11, 17, 32, .72); }
+[data-testid="stSidebar"] {
+  background: linear-gradient(180deg, #101a2c 0%, #0d1525 100%);
+  border-right: 1px solid var(--shipiq-line);
+}
+[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p { color: #c5d2e6; }
+[data-testid="stSidebar"] [data-testid="stRadio"] label { padding: .25rem 0; }
+h1, h2, h3, h4 { font-family: 'Manrope', sans-serif !important; letter-spacing: -.035em; color: #f4f8ff; }
+h1 { font-weight: 800 !important; }
+h2 { font-weight: 750 !important; }
+h3 { font-weight: 700 !important; }
+.shipiq-kicker { font-size: .72rem; letter-spacing: .2em; text-transform: uppercase; color: var(--shipiq-cyan); font-weight: 800; }
+.shipiq-title { font-family: 'Manrope', sans-serif; font-size: 2.35rem; font-weight: 800; letter-spacing: -.055em; line-height: 1.08; background: linear-gradient(100deg, #ffffff 10%, #b8d3ff 58%, #69e6d8 100%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.shipiq-sub { color: var(--shipiq-muted); font-size: 1rem; margin-top: .55rem; line-height: 1.65; }
+[data-testid="stMetric"] {
+  background: linear-gradient(145deg, rgba(22, 34, 56, .96), rgba(15, 25, 43, .96));
+  border: 1px solid var(--shipiq-line);
+  border-radius: 18px;
+  padding: 19px 20px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .12);
+  transition: transform .18s ease, border-color .18s ease;
+}
+[data-testid="stMetric"]:hover { transform: translateY(-2px); border-color: rgba(56, 214, 197, .45); }
+[data-testid="stMetricLabel"] { color: #9eb0ca !important; font-size: .84rem !important; }
+[data-testid="stMetricValue"] { color: #f4f8ff !important; font-family: 'Manrope', sans-serif; font-weight: 800; }
+[data-testid="stMetricDelta"] { color: var(--shipiq-cyan) !important; }
+[data-testid="stVerticalBlockBorderWrapper"] { border-color: var(--shipiq-line) !important; border-radius: 18px !important; }
+[data-testid="stExpander"] { border: 1px solid var(--shipiq-line); border-radius: 14px; background: rgba(17, 26, 45, .55); }
+[data-testid="stDataFrame"], [data-testid="stTable"] { border: 1px solid var(--shipiq-line); border-radius: 14px; overflow: hidden; }
+[data-testid="stTextInput"] input, [data-testid="stNumberInput"] input, [data-testid="stDateInput"] input,
+[data-testid="stSelectbox"] [data-baseweb="select"] > div, [data-testid="stMultiSelect"] [data-baseweb="select"] > div,
+[data-testid="stTextArea"] textarea {
+  background: #111b2d !important; border-color: #2a3a55 !important; border-radius: 11px !important; color: #edf4ff !important;
+}
+[data-testid="stFileUploader"] section { background: rgba(17, 27, 45, .75); border: 1px dashed #3a5272; border-radius: 14px; }
+[data-testid="stFileUploader"] section:hover { border-color: var(--shipiq-cyan); }
+.stButton > button, [data-testid="stFormSubmitButton"] > button {
+  border-radius: 11px; border: 1px solid rgba(56, 214, 197, .34);
+  background: linear-gradient(110deg, #1e9d9b, #267cc7);
+  color: white; font-weight: 700; padding: .55rem 1rem;
+  box-shadow: 0 5px 16px rgba(25, 139, 164, .16);
+  transition: transform .16s ease, filter .16s ease;
+}
+.stButton > button:hover, [data-testid="stFormSubmitButton"] > button:hover { filter: brightness(1.12); transform: translateY(-1px); border-color: #6ce7dc; color: white; }
+.stButton > button[kind="secondary"] { background: #17243a; border-color: #31435f; color: #dce8fa; box-shadow: none; }
+[data-baseweb="tab-list"] { gap: .35rem; border-bottom: 1px solid var(--shipiq-line); }
+[data-baseweb="tab"] { background: transparent; border-radius: 10px 10px 0 0; padding: .65rem 1rem; color: #aabbd2; }
+[data-baseweb="tab"][aria-selected="true"] { color: var(--shipiq-cyan); border-bottom-color: var(--shipiq-cyan); }
+hr { border-color: var(--shipiq-line); }
+.stAlert { border-radius: 13px; border: 1px solid var(--shipiq-line); }
+a { color: #67e1d4 !important; }
+[data-testid="stPlotlyChart"] { background: rgba(17, 26, 45, .55); border: 1px solid var(--shipiq-line); border-radius: 16px; padding: .35rem; }
+@media (max-width: 768px) {
+  .block-container { padding-left: 1rem; padding-right: 1rem; }
+  .shipiq-title { font-size: 1.9rem; }
+  [data-testid="stMetric"] { padding: 13px; border-radius: 14px; }
+}
 </style>''', unsafe_allow_html=True)
 
 @st.cache_data(show_spinner=False)
