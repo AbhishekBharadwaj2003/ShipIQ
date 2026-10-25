@@ -324,28 +324,47 @@ elif page=='Courier-wise Analysis':
 
 elif page=='Data Management':
     st.subheader('Data Management')
-    st.markdown('Upload shipment files and assign a brand. Excel (.xlsx/.xls) and CSV are supported. Uploaded files are added to the current app session; persistent multi-user storage can be added later.')
+    st.markdown('Upload shipment files, choose the dataset date, and assign the data to an existing brand or create a new brand. Uploaded files are added to the current app session; persistent multi-user storage can be added later.')
+
+    existing_brands = sorted(st.session_state.dataset['brand'].dropna().astype(str).unique().tolist()) if not st.session_state.dataset.empty else sorted(BRAND_FILES.keys())
+    add_new_option = '➕ Add new brand'
+    brand_options = existing_brands + [add_new_option]
+
     with st.form('upload_form',clear_on_submit=True):
         up=st.file_uploader('Choose shipment dataset',type=['xlsx','xls','csv'])
-        brand_name=st.text_input('Brand name',placeholder='e.g. NewBrand')
+        dataset_date=st.date_input('Dataset date',value=pd.Timestamp.today().date(),help='Choose the date this daily dataset should represent. This date will be applied to every row in the uploaded batch.')
+        brand_choice=st.selectbox('Brand',options=brand_options,index=0 if existing_brands else 0)
+        new_brand_name = st.text_input('New brand name',placeholder='e.g. NewBrand') if brand_choice == add_new_option else ''
         submitted=st.form_submit_button('Validate and add dataset',type='primary')
     if submitted:
-        if up is None or not brand_name.strip(): st.error('Choose a file and enter a brand name.')
+        resolved_brand = new_brand_name.strip() if brand_choice == add_new_option else brand_choice
+        if up is None or not resolved_brand:
+            st.error('Choose a file and select an existing brand or enter a new brand name.')
         else:
             try:
                 new=pd.read_csv(up) if up.name.lower().endswith('.csv') else pd.read_excel(up)
                 if new.empty: st.error('The uploaded file has no rows.')
-                elif DATE_COL not in new.columns: st.error(f"Required column '{DATE_COL}' was not found. Please upload a Patterns export with a manifested_date column.")
                 elif STATUS_COL not in new.columns: st.error(f"Required column '{STATUS_COL}' was not found.")
                 else:
-                    new=clean_df(new,brand_name.strip())
+                    # Each upload represents one selected dataset day. Stamp all rows so
+                    # the daily batch remains selectable in the shared manifested-date filter.
+                    new[DATE_COL] = pd.Timestamp(dataset_date)
+                    new=clean_df(new,resolved_brand)
                     old=st.session_state.dataset
-                    # Re-uploading a brand replaces that brand in this session to prevent accidental double counting.
-                    old=old[old.brand.astype(str).str.casefold()!=brand_name.strip().casefold()] if not old.empty else old
+                    # Re-uploading a brand for the same date replaces only that brand/date batch,
+                    # retaining the brand's historical datasets from other dates.
+                    if not old.empty and 'brand' in old.columns:
+                        old_dates = pd.to_datetime(old[DATE_COL], errors='coerce').dt.date if DATE_COL in old.columns else pd.Series(None, index=old.index)
+                        keep = ~(
+                            old['brand'].astype(str).str.casefold().eq(resolved_brand.casefold())
+                            & old_dates.eq(dataset_date)
+                        )
+                        old = old.loc[keep]
                     st.session_state.dataset=pd.concat([old,new],ignore_index=True,sort=False)
-                    st.success(f"Added {len(new):,} rows for {brand_name.strip()}. Existing rows for that brand in this session were replaced.")
+                    st.success(f"Loaded {len(new):,} rows for {resolved_brand} dated {dataset_date.strftime('%d/%m/%Y')}. Existing data for other dates and brands was retained.")
                     st.rerun()
             except Exception as e: st.error(f'Could not read dataset: {e}')
+    st.caption('Existing brands are selected by default. Choose “➕ Add new brand” only when adding a brand not already listed.')
     st.divider(); st.subheader('Loaded brands and source data')
     data=st.session_state.dataset
     if data.empty: st.info('No datasets loaded.')
