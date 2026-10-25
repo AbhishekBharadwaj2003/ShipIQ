@@ -324,7 +324,7 @@ elif page=='Courier-wise Analysis':
 
 elif page=='Data Management':
     st.subheader('Data Management')
-    st.markdown('Upload shipment files, choose the dataset date, and assign the data to an existing brand or create a new brand. Uploaded files are added to the current app session; persistent multi-user storage can be added later.')
+    st.markdown('Upload shipment files, choose a single dataset date or a date range, and assign the data to an existing brand or create a new brand. Uploaded files are added to the current app session; persistent multi-user storage can be added later.')
 
     existing_brands = sorted(st.session_state.dataset['brand'].dropna().astype(str).unique().tolist()) if not st.session_state.dataset.empty else sorted(BRAND_FILES.keys())
     add_new_option = '➕ Add new brand'
@@ -333,8 +333,17 @@ elif page=='Data Management':
     # Keep these controls outside a form so selecting "Add new brand" reruns the
     # page immediately and reveals the name field before the user submits.
     up=st.file_uploader('Choose shipment dataset',type=['xlsx','xls','csv'],key='dataset_upload')
-    dataset_date=st.date_input('Dataset date',value=pd.Timestamp.today().date(),key='dataset_date_input',
-                               help='Choose the date this daily dataset should represent. This date will be applied to every row in the uploaded batch.')
+    date_mode=st.radio('Dataset date selection',['Single date','Date range'],horizontal=True,key='dataset_date_mode',
+                       help='Use Single date for one daily export. Use Date range when the uploaded file contains manifested_date values across multiple days.')
+    if date_mode == 'Single date':
+        dataset_date=st.date_input('Dataset date',value=pd.Timestamp.today().date(),key='dataset_date_input',
+                                   help='This date will be applied to every row in the uploaded daily batch.')
+        range_start = range_end = None
+    else:
+        range_start, range_end = st.date_input('Dataset date range',value=(pd.Timestamp.today().date().replace(day=1),pd.Timestamp.today().date()),
+                                               key='dataset_date_range_input',
+                                               help='The uploaded file must contain manifested_date. Only rows within this inclusive date range will be added.')
+        dataset_date = None
     brand_choice=st.selectbox('Brand',options=brand_options,index=0,key='dataset_brand_choice')
     new_brand_name = ''
     if brand_choice == add_new_option:
@@ -347,32 +356,57 @@ elif page=='Data Management':
             st.error('Choose a shipment dataset first.')
         elif not resolved_brand:
             st.error('Enter a name for the new brand.')
+        elif date_mode == 'Date range' and (range_start is None or range_end is None):
+            st.error('Choose both the start and end dates.')
+        elif date_mode == 'Date range' and range_start > range_end:
+            st.error('The start date must be on or before the end date.')
         else:
             try:
                 # Streamlit UploadedFile supports seek; reset before reading.
                 up.seek(0)
                 new=pd.read_csv(up) if up.name.lower().endswith('.csv') else pd.read_excel(up)
-                if new.empty: st.error('The uploaded file has no rows.')
-                elif STATUS_COL not in new.columns: st.error(f"Required column '{STATUS_COL}' was not found.")
+                if new.empty:
+                    st.error('The uploaded file has no rows.')
+                elif STATUS_COL not in new.columns:
+                    st.error(f"Required column '{STATUS_COL}' was not found.")
+                elif date_mode == 'Date range' and DATE_COL not in new.columns:
+                    st.error(f"Date range upload requires a '{DATE_COL}' column containing each shipment's manifested date. Use Single date for a daily export without that column.")
                 else:
-                    # Each upload represents one selected dataset day. Stamp all rows so
-                    # the daily batch remains selectable in the shared manifested-date filter.
-                    new[DATE_COL] = pd.Timestamp(dataset_date)
+                    if date_mode == 'Single date':
+                        # A daily export represents one chosen day; stamp every row with it.
+                        new[DATE_COL] = pd.Timestamp(dataset_date)
+                        batch_dates = {dataset_date}
+                    else:
+                        parsed_dates = pd.to_datetime(new[DATE_COL], errors='coerce')
+                        row_days = parsed_dates.dt.date
+                        original_rows = len(new)
+                        in_range = row_days.notna() & row_days.ge(range_start) & row_days.le(range_end)
+                        new = new.loc[in_range].copy()
+                        new[DATE_COL] = parsed_dates.loc[in_range]
+                        if new.empty:
+                            st.error(f"No rows have a valid manifested_date between {range_start.strftime('%d/%m/%Y')} and {range_end.strftime('%d/%m/%Y')}. Nothing was added.")
+                            st.stop()
+                        excluded_rows = original_rows - len(new)
+                        batch_dates = set(pd.to_datetime(new[DATE_COL], errors='coerce').dt.date.dropna().tolist())
                     new=clean_df(new,resolved_brand)
                     old=st.session_state.dataset
-                    # Re-uploading a brand for the same date replaces only that brand/date batch,
-                    # retaining the brand's historical datasets from other dates.
+                    # Replace only the uploaded brand's batch dates, keeping that brand's
+                    # historical records for all dates outside this upload's date/date range.
                     if not old.empty and 'brand' in old.columns:
                         old_dates = pd.to_datetime(old[DATE_COL], errors='coerce').dt.date if DATE_COL in old.columns else pd.Series(None, index=old.index)
-                        keep = ~(
-                            old['brand'].astype(str).str.casefold().eq(resolved_brand.casefold())
-                            & old_dates.eq(dataset_date)
-                        )
-                        old = old.loc[keep]
+                        same_brand = old['brand'].astype(str).str.casefold().eq(resolved_brand.casefold())
+                        old = old.loc[~(same_brand & old_dates.isin(batch_dates))]
                     st.session_state.dataset=pd.concat([old,new],ignore_index=True,sort=False)
-                    st.success(f"Loaded {len(new):,} rows for {resolved_brand} dated {dataset_date.strftime('%d/%m/%Y')}. Existing data for other dates and brands was retained.")
+                    if date_mode == 'Single date':
+                        date_description = dataset_date.strftime('%d/%m/%Y')
+                    else:
+                        date_description = f"{range_start.strftime('%d/%m/%Y')}–{range_end.strftime('%d/%m/%Y')}"
+                        if excluded_rows:
+                            st.info(f"{excluded_rows:,} rows were excluded because their manifested_date was missing or outside the selected range.")
+                    st.success(f"Loaded {len(new):,} rows for {resolved_brand}, date selection {date_description}. Existing data outside the uploaded date(s) was retained.")
                     st.rerun()
-            except Exception as e: st.error(f'Could not read dataset: {e}')
+            except Exception as e:
+                st.error(f'Could not read dataset: {e}')
     st.caption('Existing brands are available in the dropdown. Select “➕ Add new brand” to reveal a field where you can type a new brand name.')
     st.divider(); st.subheader('Loaded brands and source data')
     data=st.session_state.dataset
