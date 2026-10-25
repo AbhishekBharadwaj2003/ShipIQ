@@ -409,6 +409,48 @@ def kpi_row(df, previous_df=None):
         st.caption('Day-over-day comparison is unavailable because no shipments were found for the previous calendar day.')
     st.caption('* Delivery and RTO rates use completed deliveries + completed RTOs as the denominator. Day-over-day changes compare with the previous calendar day.')
 
+    # Operational KPIs: attempt count and date-based turnaround times.
+    st.markdown('#### Delivery operations')
+    attempt_col = next((c for c in [
+        'delivery_attempts', 'delivery_attempt_count', 'attempt_count',
+        'no_of_attempts', 'number_of_attempts', 'attempts', 'delivery_attempt'
+    ] if c in df.columns), None)
+    if attempt_col is None:
+        attempt_series = pd.Series(dtype='float64')
+        attempt_avg = None
+        high_attempts = None
+    else:
+        attempt_series = pd.to_numeric(df[attempt_col], errors='coerce')
+        attempt_series = attempt_series[attempt_series >= 0]
+        attempt_avg = float(attempt_series.mean()) if not attempt_series.empty else None
+        high_attempts = int((attempt_series > 2).sum())
+
+    manifested = pd.to_datetime(df.get('manifested_date', pd.Series(pd.NaT, index=df.index)), errors='coerce')
+    pickup = pd.to_datetime(df.get('pickup_date', pd.Series(pd.NaT, index=df.index)), errors='coerce')
+    delivery = pd.to_datetime(df.get('delivery_rto_date', pd.Series(pd.NaT, index=df.index)), errors='coerce')
+    manifest_pickup = (pickup.dt.normalize() - manifested.dt.normalize()).dt.total_seconds() / 86400
+    manifest_pickup = manifest_pickup[manifested.notna() & pickup.notna() & manifest_pickup.ge(0)]
+    delivered_mask = df.get('is_delivered', pd.Series(False, index=df.index)).fillna(False).astype(bool)
+    pickup_delivery = (delivery.dt.normalize() - pickup.dt.normalize()).dt.total_seconds() / 86400
+    pickup_delivery = pickup_delivery[delivered_mask & pickup.notna() & delivery.notna() & pickup_delivery.ge(0)]
+
+    op1, op2, op3 = st.columns(3)
+    with op1:
+        attempts_display = f'{attempt_avg:.2f}' if attempt_avg is not None else 'N/A'
+        st.metric('Avg. delivery attempts', attempts_display,
+                  help=(f'{high_attempts:,} shipments required more than 2 attempts.' if high_attempts is not None else
+                        'No recognized delivery-attempt count column exists in this dataset.'))
+        if high_attempts is not None:
+            st.caption(f'⚠️ {high_attempts:,} shipments with >2 attempts')
+    with op2:
+        mp_display = f'{manifest_pickup.mean():.2f} days' if not manifest_pickup.empty else 'N/A'
+        st.metric('Manifest → Pickup', mp_display,
+                  help=f'Average across {len(manifest_pickup):,} shipments with valid, non-negative dates.')
+    with op3:
+        pd_display = f'{pickup_delivery.mean():.2f} days' if not pickup_delivery.empty else 'N/A'
+        st.metric('Pickup → Delivery', pd_display,
+                  help=f'Average delivered-shipment turnaround across {len(pickup_delivery):,} shipments with valid, non-negative dates.')
+
 def rate_table(df, by):
     if df.empty: return pd.DataFrame()
     # Count source rows, not non-null shipment IDs, so missing IDs cannot silently lower shipment totals.
