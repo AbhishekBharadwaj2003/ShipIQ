@@ -1,5 +1,6 @@
 from pathlib import Path
-from io import BytesIO
+from io import BytesIO, StringIO
+import sqlite3
 import re
 import pandas as pd
 import numpy as np
@@ -169,6 +170,41 @@ def load_defaults():
             except Exception as e: st.warning(f'Could not load {fname}: {e}')
     return pd.concat(parts, ignore_index=True, sort=False) if parts else pd.DataFrame()
 
+# Local SQLite persistence: uploads and removals survive browser refreshes and app restarts.
+# For hosted deployments, use a managed external database because the app filesystem may be ephemeral.
+DB_PATH = APP_DIR / 'shipiq_data.sqlite3'
+
+def save_dataset(dataset):
+    payload = dataset.to_json(orient='records', date_format='iso')
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute(
+            'CREATE TABLE IF NOT EXISTS shipiq_state (id INTEGER PRIMARY KEY CHECK (id = 1), dataset_json TEXT NOT NULL)'
+        )
+        conn.execute(
+            'INSERT INTO shipiq_state (id, dataset_json) VALUES (1, ?) '
+            'ON CONFLICT(id) DO UPDATE SET dataset_json=excluded.dataset_json',
+            (payload,)
+        )
+        conn.commit()
+
+def load_persisted_dataset():
+    if not DB_PATH.exists():
+        return None
+    with sqlite3.connect(DB_PATH) as conn:
+        conn.execute(
+            'CREATE TABLE IF NOT EXISTS shipiq_state (id INTEGER PRIMARY KEY CHECK (id = 1), dataset_json TEXT NOT NULL)'
+        )
+        row = conn.execute('SELECT dataset_json FROM shipiq_state WHERE id = 1').fetchone()
+    if not row:
+        return None
+    stored = pd.read_json(StringIO(row[0]), orient='records', convert_dates=False)
+    if stored.empty or 'brand' not in stored.columns:
+        return stored
+    parts = []
+    for brand, group in stored.groupby('brand', dropna=False, sort=False):
+        parts.append(clean_df(group, str(brand)))
+    return pd.concat(parts, ignore_index=True, sort=False) if parts else pd.DataFrame()
+
 def rate(num, den): return (100*num/den) if den else 0.0
 
 def metrics(df):
@@ -256,7 +292,12 @@ def pdf_report(df, title, filters_text):
     doc.build(story); buf.seek(0); return buf.getvalue()
 
 if 'dataset' not in st.session_state:
-    st.session_state.dataset = load_defaults()
+    persisted_dataset = load_persisted_dataset()
+    if persisted_dataset is None:
+        st.session_state.dataset = load_defaults()
+        save_dataset(st.session_state.dataset)
+    else:
+        st.session_state.dataset = persisted_dataset
 if 'custom_brands' not in st.session_state: st.session_state.custom_brands=[]
 
 with st.sidebar:
@@ -405,7 +446,7 @@ elif page=='Courier-wise Analysis':
 
 elif page=='Data Management':
     st.subheader('Data Management')
-    st.markdown('Upload shipment files, choose a single dataset date or a date range, and assign the data to an existing brand or create a new brand. Uploaded files are added to the current app session; persistent multi-user storage can be added later.')
+    st.markdown('Upload shipment files, choose a single dataset date or a date range, and assign the data to an existing brand or create a new brand. Uploaded data is saved to a local SQLite database and survives browser refreshes and app restarts on this machine.')
 
     existing_brands = sorted(st.session_state.dataset['brand'].dropna().astype(str).unique().tolist()) if not st.session_state.dataset.empty else sorted(BRAND_FILES.keys())
     add_new_option = '➕ Add new brand'
@@ -482,6 +523,7 @@ elif page=='Data Management':
                             dates_to_replace = old_dates.ge(range_start) & old_dates.le(range_end)
                         old = old.loc[~(same_brand & dates_to_replace)]
                     st.session_state.dataset=pd.concat([old,new],ignore_index=True,sort=False)
+                    save_dataset(st.session_state.dataset)
                     if date_mode == 'Single date':
                         date_description = dataset_date.strftime('%d/%m/%Y')
                     else:
@@ -498,9 +540,9 @@ elif page=='Data Management':
     if data.empty: st.info('No datasets loaded.')
     else:
         summary=data.groupby('brand').agg(rows=('brand','size'),unique_shipments=('shipment_id','nunique') if 'shipment_id' in data.columns else ('brand','size'),couriers=('courier_name','nunique')).reset_index()
-        st.caption(f"Current session total: {len(data):,} source rows. Original bundled September datasets load automatically when the app starts.")
+        st.caption(f"Saved dataset total: {len(data):,} source rows. Original bundled September datasets load automatically when the app starts.")
         st.markdown('**Stored brands**')
-        st.caption('Delete removes that brand’s rows from the current session only. Bundled source files are not deleted, and bundled brands will load again after an app restart unless persistent storage is added.')
+        st.caption('Delete removes that brand’s rows from the saved local dataset. Bundled source Excel files remain unchanged; use Reset to restore the bundled September datasets.')
         for _, brand_row in summary.iterrows():
             brand_name = str(brand_row['brand'])
             brand_key = ''.join(ch if ch.isalnum() else '_' for ch in brand_name.lower())
@@ -517,15 +559,16 @@ elif page=='Data Management':
                 if st.button('Delete',key=f'delete_brand_{brand_key}',type='secondary'):
                     st.session_state[f'confirm_delete_brand_{brand_key}'] = True
             if st.session_state.get(f'confirm_delete_brand_{brand_key}', False):
-                st.warning(f"Delete all {int(brand_row['rows']):,} rows for {brand_name} from the current session?")
+                st.warning(f"Delete all {int(brand_row['rows']):,} rows for {brand_name} from the saved local dataset?")
                 confirm_col, cancel_col = st.columns([1, 1])
                 with confirm_col:
                     if st.button(f"Confirm delete {brand_name}",key=f'confirm_delete_button_{brand_key}',type='primary'):
                         st.session_state.dataset = st.session_state.dataset.loc[
                             ~st.session_state.dataset['brand'].astype(str).str.casefold().eq(brand_name.casefold())
                         ].reset_index(drop=True)
+                        save_dataset(st.session_state.dataset)
                         st.session_state.pop(f'confirm_delete_brand_{brand_key}', None)
-                        st.success(f"Deleted {brand_name} from the current session.")
+                        st.success(f"Deleted {brand_name} from the saved local dataset.")
                         st.rerun()
                 with cancel_col:
                     if st.button('Cancel',key=f'cancel_delete_brand_{brand_key}'):
@@ -557,7 +600,7 @@ elif page=='Data Management':
         if pending_remove:
             st.warning(
                 f"Remove all {pending_remove['brand']} rows with manifested dates from "
-                f"{pending_remove['start']} through {pending_remove['end']}? This cannot be undone in the current session."
+                f"{pending_remove['start']} through {pending_remove['end']}? This cannot be undone unless you upload the data again."
             )
             yes_col, no_col = st.columns(2)
             with yes_col:
@@ -570,6 +613,7 @@ elif page=='Data Management':
                     target_dates = row_dates.ge(start_remove) & row_dates.le(end_remove)
                     removed_count = int((target_brand & target_dates).sum())
                     st.session_state.dataset = current.loc[~(target_brand & target_dates)].reset_index(drop=True)
+                    save_dataset(st.session_state.dataset)
                     st.session_state.pop('pending_remove_range', None)
                     st.success(f"Removed {removed_count:,} rows for {pending_remove['brand']} from {start_remove} through {end_remove}. Other brands and dates were retained.")
                     st.rerun()
@@ -579,7 +623,9 @@ elif page=='Data Management':
                     st.rerun()
 
         if st.button('Reset to bundled September datasets',type='secondary'):
-            st.session_state.dataset=load_defaults(); st.rerun()
+            st.session_state.dataset=load_defaults()
+            save_dataset(st.session_state.dataset)
+            st.rerun()
 
 elif page=='Reports':
     st.subheader('Reports & Downloads'); st.caption(filter_text)
