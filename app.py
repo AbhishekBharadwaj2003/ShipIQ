@@ -10,6 +10,7 @@ import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
 import plotly.io as pio
+from auth import (init_auth_db, user_count, register_user, authenticate, list_users, list_audit_logs, admin_create_user, admin_update_user, admin_delete_user, transfer_primary_admin, change_own_password)
 
 # Apply the Green Teal palette to every Plotly chart in the dashboard.
 pio.templates["shipiq_blue"] = pio.templates["plotly_dark"]
@@ -500,6 +501,65 @@ def pdf_report(df, title, filters_text):
     story.append(Spacer(1,10)); story.append(Paragraph('Methodology: delivery, RTO and cancellation rates use finalized shipments as the denominator. Pending/in-progress shipments are excluded from these rate denominators. Shipment status is normalized from the source status field; validate status mapping before operational decisions.',styles['Italic']))
     doc.build(story); buf.seek(0); return buf.getvalue()
 
+# Authentication gate: additive auth tables share the existing SQLite file but never modify shipment rows.
+init_auth_db(DB_PATH)
+
+def render_auth_screen():
+    st.markdown('<div class="shipiq-kicker">PATTERNS · LOGISTICS INTELLIGENCE</div>', unsafe_allow_html=True)
+    st.markdown('<div class="shipiq-title">ShipIQ</div>', unsafe_allow_html=True)
+    st.markdown('<div class="shipiq-sub">Sign in to your shipment intelligence workspace.</div>', unsafe_allow_html=True)
+    st.write("")
+    login_tab, register_tab = st.tabs(["Sign in", "Create account"])
+    with login_tab:
+        with st.form("shipiq_login_form"):
+            login_email = st.text_input("Email", key="login_email")
+            login_password = st.text_input("Password", type="password", key="login_password")
+            login_submit = st.form_submit_button("Sign in", type="primary", use_container_width=True)
+        if login_submit:
+            user, error = authenticate(DB_PATH, login_email, login_password)
+            if user:
+                st.session_state.auth_user = user
+                st.rerun()
+            else:
+                st.error(error or "Unable to sign in.")
+    with register_tab:
+        if user_count(DB_PATH) == 0:
+            st.info("The first account created becomes the primary Admin account.")
+        else:
+            st.info("Self-registration creates a Viewer account. An Admin can change your role later.")
+        with st.form("shipiq_register_form"):
+            reg_name = st.text_input("Full name", key="reg_name")
+            reg_email = st.text_input("Email address", key="reg_email")
+            reg_password = st.text_input("Password (minimum 10 characters)", type="password", key="reg_password")
+            reg_confirm = st.text_input("Confirm password", type="password", key="reg_confirm")
+            reg_submit = st.form_submit_button("Create account", type="primary", use_container_width=True)
+        if reg_submit:
+            if reg_password != reg_confirm:
+                st.error("Passwords do not match.")
+            else:
+                ok, message, user = register_user(DB_PATH, reg_name, reg_email, reg_password)
+                if ok:
+                    st.session_state.auth_user = user
+                    st.success("Account created. Opening ShipIQ…")
+                    st.rerun()
+                else:
+                    st.error(message)
+
+if "auth_user" not in st.session_state:
+    render_auth_screen()
+    st.stop()
+
+# Refresh role/status from SQLite on every rerun so deactivated users lose access promptly.
+_current_user = next((u for u in list_users(DB_PATH) if int(u["id"]) == int(st.session_state.auth_user.get("id", -1))), None)
+if not _current_user or not _current_user["is_active"]:
+    st.session_state.pop("auth_user", None)
+    st.warning("Your account is inactive or no longer exists. Please sign in again.")
+    render_auth_screen()
+    st.stop()
+st.session_state.auth_user.update(_current_user)
+AUTH_USER = st.session_state.auth_user
+ROLE = AUTH_USER["role"]
+
 if 'dataset' not in st.session_state:
     persisted_dataset = load_persisted_dataset()
     if persisted_dataset is None:
@@ -512,7 +572,30 @@ if 'custom_brands' not in st.session_state: st.session_state.custom_brands=[]
 with st.sidebar:
     st.markdown('## 📦 ShipIQ')
     st.caption('Shipment Intelligence Control Tower')
-    page=st.radio('NAVIGATION',['Executive Overview','Brand-wise Analysis','AI Recommendation','State-wise Analysis','Courier-wise Analysis','Data Management','Reports'],label_visibility='collapsed')
+    st.markdown("**" + "{AUTH_USER['full_name']}" + "**")
+    st.caption(AUTH_USER['email'] + " · " + ROLE + (" · Primary Admin" if AUTH_USER["is_primary_admin"] else ""))
+    if st.button("Sign out", key="shipiq_sign_out", use_container_width=True):
+        st.session_state.pop("auth_user", None)
+        st.rerun()
+    with st.expander("Change my password"):
+        with st.form("shipiq_change_password"):
+            current_pw = st.text_input("Current password", type="password", key="current_pw")
+            new_pw = st.text_input("New password (10+ characters)", type="password", key="new_pw")
+            confirm_pw = st.text_input("Confirm new password", type="password", key="confirm_new_pw")
+            change_pw_submit = st.form_submit_button("Update password")
+        if change_pw_submit:
+            if new_pw != confirm_pw:
+                st.error("New passwords do not match.")
+            else:
+                ok, message = change_own_password(DB_PATH, AUTH_USER["id"], current_pw, new_pw)
+                (st.success if ok else st.error)(message)
+    nav_pages = ['Executive Overview','Brand-wise Analysis','AI Recommendation','State-wise Analysis','Courier-wise Analysis']
+    if ROLE in ('Admin','Analyst'):
+        nav_pages.extend(['Data Management','Reports'])
+    if ROLE == 'Admin':
+        nav_pages.append('User Management')
+    st.divider()
+    page=st.radio('NAVIGATION',nav_pages,label_visibility='collapsed')
     st.divider()
     all_data=st.session_state.dataset.copy()
     if not all_data.empty:
@@ -569,7 +652,97 @@ st.markdown('<div class="shipiq-title">ShipIQ</div>',unsafe_allow_html=True)
 st.markdown('<div class="shipiq-sub">A clearer view of shipment health, courier performance, and delivery outcomes.</div>',unsafe_allow_html=True)
 st.write('')
 
-if page=='Executive Overview':
+if page == 'User Management':
+    if ROLE != 'Admin':
+        st.error("Admin permission required.")
+        st.stop()
+    st.subheader("User Management")
+    st.caption("Create accounts, manage roles and access, transfer primary ownership, and review the audit trail.")
+    users = list_users(DB_PATH)
+    if users:
+        display_users = pd.DataFrame(users).rename(columns={
+            "id":"User ID","full_name":"Name","email":"Email","role":"Role",
+            "is_active":"Active","is_primary_admin":"Primary Admin",
+            "created_at":"Created","updated_at":"Updated","last_login":"Last login"
+        })
+        st.dataframe(display_users, use_container_width=True, hide_index=True)
+    st.divider()
+    create_col, edit_col = st.columns(2)
+    with create_col:
+        st.markdown("#### Create user")
+        with st.form("admin_create_user_form"):
+            new_name = st.text_input("Full name", key="admin_new_name")
+            new_email = st.text_input("Email", key="admin_new_email")
+            new_user_password = st.text_input("Temporary password (10+ characters)", type="password", key="admin_new_password")
+            new_role = st.selectbox("Role", ["Viewer","Analyst","Admin"], key="admin_new_role")
+            create_submit = st.form_submit_button("Create user", type="primary")
+        if create_submit:
+            ok, message = admin_create_user(DB_PATH, AUTH_USER["id"], new_name, new_email, new_user_password, new_role)
+            (st.success if ok else st.error)(message)
+            if ok:
+                st.rerun()
+    with edit_col:
+        st.markdown("#### Update user")
+        editable_users = [u for u in users if int(u["id"]) != int(AUTH_USER["id"])]
+        if editable_users:
+            selected_id = st.selectbox("Select user", [int(u["id"]) for u in editable_users],
+                format_func=lambda uid: next((u["full_name"] + " · " + u["email"] for u in editable_users if int(u["id"]) == uid), str(uid)),
+                key="admin_edit_user_id")
+            selected_user = next(u for u in editable_users if int(u["id"]) == int(selected_id))
+            with st.form("admin_edit_user_form"):
+                edit_name = st.text_input("Name", value=selected_user["full_name"], key="admin_edit_name")
+                edit_role = st.selectbox("Role", ["Admin","Analyst","Viewer"], index=["Admin","Analyst","Viewer"].index(selected_user["role"]), key="admin_edit_role")
+                edit_active = st.checkbox("Account active", value=bool(selected_user["is_active"]), key="admin_edit_active")
+                edit_submit = st.form_submit_button("Save user changes", type="primary")
+            if edit_submit:
+                ok, message = admin_update_user(DB_PATH, AUTH_USER["id"], selected_id, role=edit_role, is_active=edit_active, full_name=edit_name)
+                (st.success if ok else st.error)(message)
+                if ok:
+                    st.rerun()
+            delete_confirm = st.checkbox("I confirm I want to permanently delete this user", key="admin_delete_confirm")
+            if st.button("Delete selected user", type="secondary", disabled=not delete_confirm, key="admin_delete_user_btn"):
+                ok, message = admin_delete_user(DB_PATH, AUTH_USER["id"], selected_id)
+                (st.success if ok else st.error)(message)
+                if ok:
+                    st.rerun()
+        else:
+            st.info("Create another user to manage a different account.")
+    st.divider()
+    st.markdown("#### Transfer primary Admin ownership")
+    st.caption("The recipient must already be an active Admin. Your Admin role will remain unchanged.")
+    active_admins = [u for u in users if u["role"] == "Admin" and u["is_active"] and int(u["id"]) != int(AUTH_USER["id"])]
+    if active_admins:
+        with st.form("transfer_primary_admin_form"):
+            transfer_target = st.selectbox("New primary Admin", [int(u["id"]) for u in active_admins],
+                format_func=lambda uid: next((u["full_name"] + " · " + u["email"] for u in active_admins if int(u["id"]) == uid), str(uid)))
+            transfer_password = st.text_input("Confirm with your password", type="password", key="transfer_admin_password")
+            transfer_confirm = st.checkbox("I understand this changes primary ownership", key="transfer_admin_confirm")
+            transfer_submit = st.form_submit_button("Transfer ownership", disabled=False)
+        if transfer_submit:
+            if not transfer_confirm:
+                st.error("Confirm the ownership transfer before continuing.")
+            else:
+                ok, message = transfer_primary_admin(DB_PATH, AUTH_USER["id"], transfer_target, transfer_password)
+                (st.success if ok else st.error)(message)
+                if ok:
+                    st.rerun()
+    else:
+        st.info("Create or promote another active Admin before transferring ownership.")
+    st.divider()
+    st.markdown("#### Recent audit log")
+    audit = list_audit_logs(DB_PATH, 100)
+    if audit:
+        st.dataframe(pd.DataFrame(audit), use_container_width=True, hide_index=True)
+    else:
+        st.info("No audit events yet.")
+
+elif page == 'Data Management' and ROLE not in ('Admin','Analyst'):
+    st.error("Your role is read-only. Data management requires Analyst or Admin access.")
+    st.stop()
+elif page == 'Reports' and ROLE not in ('Admin','Analyst'):
+    st.error("Report exports require Analyst or Admin access.")
+    st.stop()
+elif page=='Executive Overview':
     st.subheader('Executive Overview')
     st.caption(filter_text)
     if filtered.empty: st.info('No shipments match the current filters. Upload data or adjust the date/brand filters.')
