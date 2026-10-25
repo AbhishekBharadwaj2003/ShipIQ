@@ -366,7 +366,7 @@ if 'custom_brands' not in st.session_state: st.session_state.custom_brands=[]
 with st.sidebar:
     st.markdown('## 📦 ShipIQ')
     st.caption('Shipment Intelligence Control Tower')
-    page=st.radio('NAVIGATION',['Executive Overview','Brand-wise Analysis','State-wise Analysis','Courier-wise Analysis','Data Management','Reports'],label_visibility='collapsed')
+    page=st.radio('NAVIGATION',['Executive Overview','Brand-wise Analysis','AI Recommendation','State-wise Analysis','Courier-wise Analysis','Data Management','Reports'],label_visibility='collapsed')
     st.divider()
     all_data=st.session_state.dataset.copy()
     if not all_data.empty:
@@ -471,6 +471,60 @@ elif page=='Brand-wise Analysis':
                 with c2:
                     st.plotly_chart(px.bar(rate_table(d,'courier_name').head(12),x='courier_name',y='delivery_rate_%',title=f'{brand}: courier delivery rate',labels={'courier_name':'Courier','delivery_rate_%':'Delivery rate (%)'}),use_container_width=True)
                 st.dataframe(rate_table(d,'courier_name'),use_container_width=True,hide_index=True)
+
+
+elif page=='AI Recommendation':
+    st.subheader('AI Recommendation')
+    st.caption('Rule-based business recommendations generated from shipment KPIs for the selected manifested dates and brands. These are data-driven heuristics, not an external generative-AI model.')
+    st.caption(filter_text)
+    if filtered.empty:
+        st.info('No shipments match the selected dates and brands. Adjust the filters to generate recommendations.')
+    else:
+        brand_summary = rate_table(filtered, 'brand')
+        st.markdown('Recommendations are generated separately for each brand using shipment volume, delivery rate, RTO rate, cancellations, pending shipments, and courier performance.')
+        for _, row in brand_summary.sort_values('shipments', ascending=False).iterrows():
+            brand = str(row['brand'])
+            bd = filtered[filtered['brand'].astype(str) == brand].copy()
+            bm = metrics(bd)
+            with st.container(border=True):
+                st.markdown(f"### {brand}")
+                m1, m2, m3, m4 = st.columns(4)
+                m1.metric('Shipments', f"{bm['Shipments']:,}")
+                m2.metric('Delivery rate', f"{bm['Delivery rate']:.2f}%")
+                m3.metric('RTO rate', f"{bm['RTO rate']:.2f}%")
+                m4.metric('Cancelled', f"{bm['Cancelled']:,}")
+                recommendations = []
+                if bm['Shipments'] < 10:
+                    recommendations.append(('ℹ️', 'Small sample size', f"Only {bm['Shipments']} shipments are in this selection. Treat rate changes as directional and review a longer date range before making operational changes."))
+                if bm['Delivery rate'] < 90 and bm['Finalized'] >= 10:
+                    recommendations.append(('🔴', 'Improve delivery success', f"Delivery rate is {bm['Delivery rate']:.2f}%. Review failed delivery reasons, address quality, delivery attempts, and courier performance for this period."))
+                elif bm['Delivery rate'] >= 97 and bm['Finalized'] >= 10:
+                    recommendations.append(('🟢', 'Maintain delivery performance', f"Delivery rate is strong at {bm['Delivery rate']:.2f}%. Identify the couriers and destination areas contributing to this result and maintain those operating practices."))
+                if bm['RTO rate'] >= 10 and bm['Finalized'] >= 10:
+                    recommendations.append(('🔴', 'Reduce return-to-origin shipments', f"RTO rate is {bm['RTO rate']:.2f}%. Investigate COD orders, failed delivery attempts, customer unavailability, and high-RTO pin codes before changing shipping rules."))
+                if bm['Cancelled'] > 0:
+                    cancel_rate = bm['Cancellation rate']
+                    recommendations.append(('🟠', 'Investigate cancellations', f"{bm['Cancelled']} shipments were cancelled in the selected period (cancellation rate {cancel_rate:.2f}% of finalized outcomes). Check cancellation reasons, order confirmation, and dispatch timing."))
+                if bm['Pending / in progress'] > 0:
+                    recommendations.append(('🟡', 'Follow up on in-progress shipments', f"{bm['Pending / in progress']} shipments are pending/in progress. Review aging and latest tracking updates; prioritize shipments approaching or exceeding promised delivery time."))
+                if bm['Unknown / unmapped status'] > 0:
+                    recommendations.append(('🟡', 'Clean up shipment status mapping', f"{bm['Unknown / unmapped status']} rows have unknown or unmapped statuses. Normalize source statuses before relying on KPI comparisons."))
+                couriers = rate_table(bd, 'courier_name')
+                eligible = couriers[couriers['shipments'] >= 5].copy()
+                if len(eligible) >= 2:
+                    best = eligible.sort_values(['delivery_rate_%','shipments'], ascending=[False,False]).iloc[0]
+                    worst = eligible.sort_values(['delivery_rate_%','shipments'], ascending=[True,False]).iloc[0]
+                    if float(best['delivery_rate_%']) - float(worst['delivery_rate_%']) >= 10:
+                        recommendations.append(('🔵', 'Review courier allocation', f"{best['courier_name']} has the highest observed delivery rate ({best['delivery_rate_%']:.1f}%) among couriers with at least 5 shipments, while {worst['courier_name']} is at {worst['delivery_rate_%']:.1f}%. Compare serviceability, shipment mix, and volumes before reallocating shipments."))
+                if not recommendations:
+                    recommendations.append(('🟢', 'Keep monitoring current performance', 'No major threshold-based risk stood out for this selection. Continue monitoring delivery, RTO, cancellation, and pending-shipment KPIs as more data arrives.'))
+                for icon, title, detail in recommendations:
+                    st.markdown(f"**{icon} {title}**")
+                    st.write(detail)
+                if not couriers.empty:
+                    st.markdown('**Courier performance for this brand and period**')
+                    st.dataframe(couriers[['courier_name','shipments','delivered','delivery_rate_%','rto','rto_rate_%','cancelled']], use_container_width=True, hide_index=True)
+        st.caption('Interpretation note: rates are calculated using the app’s finalized-shipment denominator. Recommendations are descriptive and should be validated against shipment reasons, service levels, and operational context before acting.')
 
 elif page=='State-wise Analysis':
     st.subheader('State-wise Analysis'); st.caption(filter_text)
