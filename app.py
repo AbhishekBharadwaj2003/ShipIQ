@@ -395,7 +395,11 @@ elif page=='Data Management':
                     if not old.empty and 'brand' in old.columns:
                         old_dates = pd.to_datetime(old[DATE_COL], errors='coerce').dt.date if DATE_COL in old.columns else pd.Series(None, index=old.index)
                         same_brand = old['brand'].astype(str).str.casefold().eq(resolved_brand.casefold())
-                        old = old.loc[~(same_brand & old_dates.isin(batch_dates))]
+                        if date_mode == 'Single date':
+                            dates_to_replace = old_dates.eq(dataset_date)
+                        else:
+                            dates_to_replace = old_dates.ge(range_start) & old_dates.le(range_end)
+                        old = old.loc[~(same_brand & dates_to_replace)]
                     st.session_state.dataset=pd.concat([old,new],ignore_index=True,sort=False)
                     if date_mode == 'Single date':
                         date_description = dataset_date.strftime('%d/%m/%Y')
