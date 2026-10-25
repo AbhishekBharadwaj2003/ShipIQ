@@ -16,6 +16,7 @@ ShipIQ is a Streamlit-based shipment analytics dashboard that turns multi-brand 
 - **Data Management** — upload CSV/XLSX exports, add brands, upload single-date or date-range data, and remove a brand's records for a selected date range.
 - **Reports** — generate a report from the currently selected data.
 - **Persistent local storage** — local SQLite storage saves the combined shipment dataset between refreshes and app restarts on the same machine.
+- **Sign-in and role-based access** — email/password authentication, PBKDF2 password hashing, throttled failed sign-ins, Admin/Analyst/Viewer permissions, user administration, primary Admin ownership transfer, and audit logging.
 - **Data quality checks** — normalize source shipment statuses and support analysis of missing or unmapped values.
 
 ## Tech stack
@@ -73,6 +74,18 @@ python -m streamlit run app.py
 ```
 
 Streamlit will display a local URL, usually `http://localhost:8501`.
+
+## Authentication and roles
+
+ShipIQ requires an account before showing shipment analytics. The first account registered in a new database becomes the primary **Admin**; subsequent self-registrations start as **Viewer** accounts. Admins can create accounts and assign roles.
+
+- **Admin:** dashboard, uploads and data maintenance, reports, user management, role/status changes, and primary Admin ownership transfer.
+- **Analyst:** dashboard, shipment uploads/updates, and report exports. Destructive data maintenance controls and user management are Admin-only.
+- **Viewer:** read-only analytics and shipment attention details; no uploads, data changes, or report exports.
+
+Passwords are stored as salted PBKDF2-SHA256 hashes, not plaintext. Sign-in attempts are throttled after repeated failures. Users can change their own password from the sidebar. There is no email-based password-reset flow configured.
+
+Authentication tables are added to the existing `shipiq_data.sqlite3` file. They do not replace the `shipments` table or its records. Back up the database before upgrading, and keep the backup private because shipment data may contain sensitive information.
 
 ## Using the dashboard
 
