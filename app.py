@@ -27,43 +27,23 @@ st.markdown('''<style>
 :root { --shipiq-bg:#0B1220; --shipiq-surface:#121D2D; --shipiq-surface2:#19283A; --shipiq-line:#263B50; --shipiq-gold:#35D0C5; --shipiq-ivory:#EDF7FF; --shipiq-muted:#9AAFC2; }
 html, body, [class*="css"] { font-family:'DM Sans',sans-serif; }
 .stApp { background:radial-gradient(ellipse at 12% 0%,rgba(53,208,197,.10),transparent 35%),#0B1220; color:var(--shipiq-ivory); }
-/* Quiklee watermark: render as a real DOM layer, above the app background */
-.shipiq-watermark-layer {
-  position:fixed !important;
-  inset:0 !important;
-  z-index:0 !important;
-  display:flex !important;
-  align-items:center !important;
-  justify-content:center !important;
-  overflow:hidden !important;
-  pointer-events:none !important;
+/* Watermark is rendered as a background layer, never as foreground content. */
+.stApp {
+  background-color:#0B1220 !important;
+  background-image:
+    radial-gradient(ellipse at 12% 0%, rgba(53,208,197,.10), transparent 35%),
+    linear-gradient(rgba(11,18,32,.84), rgba(11,18,32,.84)),
+    url("https://raw.githubusercontent.com/AbhishekBharadwaj2003/ShipIQ/main/data/quiklee_india_cover.jpg") !important;
+  background-repeat:no-repeat, no-repeat, no-repeat !important;
+  background-position:center, center, center 54% !important;
+  background-size:cover, cover, min(78vw, 1120px) auto !important;
+  background-attachment:fixed !important;
 }
-.shipiq-watermark-layer img {
-  display:block !important;
-  width:min(78vw, 1120px) !important;
-  max-height:76vh !important;
-  object-fit:contain !important;
-  opacity:1 !important;
-  transform:rotate(-12deg) !important;
-  filter:none !important;
-}
-[data-testid="stAppViewContainer"] { position:relative !important; }
-[data-testid="stAppViewContainer"] > .main {
-  position:relative !important;
-  z-index:1 !important;
-  background:transparent !important;
-}
-[data-testid="stSidebar"] { position:relative !important; z-index:2 !important; }
-@media (max-width: 768px) {
-  .shipiq-watermark-layer img { width:94vw !important; max-height:58vh !important; opacity:1 !important; }
-}
+[data-testid="stAppViewContainer"] > .main { background:transparent !important; }
+[data-testid="stSidebar"] { position:relative; z-index:2; }
+
 </style>''', unsafe_allow_html=True)
-WATERMARK_PATH = DATA_DIR / 'quiklee_india_cover.jpg'
-if WATERMARK_PATH.exists():
-    WATERMARK_B64 = base64.b64encode(WATERMARK_PATH.read_bytes()).decode('ascii')
-    st.markdown(f'''<div class="shipiq-watermark-layer"><img src="data:image/jpeg;base64,{WATERMARK_B64}" alt="" aria-hidden="true"></div>''', unsafe_allow_html=True)
-else:
-    st.warning("Quiklee watermark image not found at data/quiklee_india_cover.jpg.")
+# The Quiklee logo is applied as a background image in CSS so it cannot cover dashboard content.
 
 @st.cache_data(show_spinner=False)
 def load_excel(path, brand):
