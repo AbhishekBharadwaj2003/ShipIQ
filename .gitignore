@@ -24,3 +24,8 @@ reports/exports/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Local shipment and authentication database (contains operational data)
+shipiq_data.sqlite3
+shipiq_data.sqlite3-wal
+shipiq_data.sqlite3-shm
