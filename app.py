@@ -486,25 +486,98 @@ def rate_table(df, by):
     return g.sort_values(['delivery_rate_%','shipments'],ascending=[False,False])
 
 def pdf_report(df, title, filters_text):
-    buf=BytesIO(); doc=SimpleDocTemplate(buf,pagesize=landscape(A4),rightMargin=28,leftMargin=28,topMargin=28,bottomMargin=28)
-    styles=getSampleStyleSheet(); story=[]
-    story.append(Paragraph('ShipIQ | Shipment Intelligence',styles['Title']))
-    story.append(Paragraph(title,styles['Heading2']))
-    story.append(Paragraph(filters_text,styles['Normal'])); story.append(Spacer(1,12))
-    m=metrics(df)
-    summary=[['Metric','Value'],['Total shipments',f"{m['Shipments']:,}"],['Delivered',f"{m['Delivered']:,}"],['Delivery rate (finalized shipments)',f"{m['Delivery rate']:.1f}%"],['RTO',f"{m['RTO']:,}"],['RTO rate (finalized shipments)',f"{m['RTO rate']:.1f}%"],['Cancelled',f"{m['Cancelled']:,}"],['Cancellation rate (finalized shipments)',f"{m['Cancellation rate']:.1f}%"],['Pending / in progress',f"{m['Pending / in progress']:,}"],['Unknown / unmapped status',f"{m['Unknown / unmapped status']:,}"]]
-    t=Table(summary,colWidths=[270,150]); t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#17243b')),('TEXTCOLOR',(0,0),(-1,0),colors.white),('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('GRID',(0,0),(-1,-1),.35,colors.lightgrey),('PADDING',(0,0),(-1,-1),7)])); story.append(t); story.append(Spacer(1,14))
-    story.append(Paragraph('Brand summary',styles['Heading3']))
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=landscape(A4), rightMargin=28, leftMargin=28, topMargin=28, bottomMargin=28)
+    styles = getSampleStyleSheet()
+    story = []
+    story.append(Paragraph('ShipIQ | Shipment Intelligence', styles['Title']))
+    story.append(Paragraph(title, styles['Heading2']))
+    story.append(Paragraph(filters_text, styles['Normal']))
+    story.append(Spacer(1, 12))
+    m = metrics(df)
+    summary = [['Metric', 'Value'], ['Total shipments', f"{m['Shipments']:,}"], ['Delivered', f"{m['Delivered']:,}"], ['Delivery rate (finalized shipments)', f"{m['Delivery rate']:.1f}%"], ['RTO', f"{m['RTO']:,}"], ['RTO rate (finalized shipments)', f"{m['RTO rate']:.1f}%"], ['Cancelled', f"{m['Cancelled']:,}"], ['Cancellation rate (finalized shipments)', f"{m['Cancellation rate']:.1f}%"], ['Pending / in progress', f"{m['Pending / in progress']:,}"], ['Unknown / unmapped status', f"{m['Unknown / unmapped status']:,}"]]
+    t = Table(summary, colWidths=[270, 150], repeatRows=1)
+    t.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#17243b')),('TEXTCOLOR',(0,0),(-1,0),colors.white),('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('GRID',(0,0),(-1,-1),.35,colors.lightgrey),('PADDING',(0,0),(-1,-1),7)]))
+    story.append(t)
+    story.append(Spacer(1, 14))
+
+    def add_report_table(heading, headers, rows, widths=None, font_size=7):
+        story.append(Paragraph(heading, styles['Heading3']))
+        if not rows:
+            story.append(Paragraph('No data available for this section in the selected filters.', styles['Normal']))
+            story.append(Spacer(1, 8))
+            return
+        table_rows = [headers] + rows
+        table = Table(table_rows, colWidths=widths, repeatRows=1, hAlign='LEFT')
+        table.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#17243b')),('TEXTCOLOR',(0,0),(-1,0),colors.white),('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('FONTSIZE',(0,0),(-1,-1),font_size),('GRID',(0,0),(-1,-1),.3,colors.lightgrey),('VALIGN',(0,0),(-1,-1),'TOP'),('PADDING',(0,0),(-1,-1),4)]))
+        story.append(table)
+        story.append(Spacer(1, 12))
+
+    # Brand-wise analysis
     if 'brand' in df.columns:
-        b=rate_table(df,'brand'); rows=[['Brand','Shipments','Delivered','Delivery %','RTO','RTO %','Cancelled']]
-        for _,r in b.iterrows(): rows.append([str(r['brand']),int(r.shipments),int(r.delivered),f"{r['delivery_rate_%']:.1f}%",int(r.rto),f"{r['rto_rate_%']:.1f}%",int(r.cancelled)])
-        bt=Table(rows,repeatRows=1); bt.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#17243b')),('TEXTCOLOR',(0,0),(-1,0),colors.white),('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('GRID',(0,0),(-1,-1),.3,colors.lightgrey),('PADDING',(0,0),(-1,-1),5)])); story.append(bt); story.append(Spacer(1,12))
-    story.append(Paragraph('Courier performance',styles['Heading3']))
-    c=rate_table(df,'courier_name'); rows=[['Courier','Shipments','Delivered','Delivery %','RTO','RTO %','Cancelled']]
-    for _,r in c.head(25).iterrows(): rows.append([str(r['courier_name'])[:32],int(r.shipments),int(r.delivered),f"{r['delivery_rate_%']:.1f}%",int(r.rto),f"{r['rto_rate_%']:.1f}%",int(r.cancelled)])
-    ct=Table(rows,repeatRows=1); ct.setStyle(TableStyle([('BACKGROUND',(0,0),(-1,0),colors.HexColor('#17243b')),('TEXTCOLOR',(0,0),(-1,0),colors.white),('FONTNAME',(0,0),(-1,0),'Helvetica-Bold'),('GRID',(0,0),(-1,-1),.3,colors.lightgrey),('PADDING',(0,0),(-1,-1),4)])); story.append(ct)
-    story.append(Spacer(1,10)); story.append(Paragraph('Methodology: delivery, RTO and cancellation rates use finalized shipments as the denominator. Pending/in-progress shipments are excluded from these rate denominators. Shipment status is normalized from the source status field; validate status mapping before operational decisions.',styles['Italic']))
-    doc.build(story); buf.seek(0); return buf.getvalue()
+        b = rate_table(df, 'brand')
+        rows = [[str(r['brand'])[:28], int(r.shipments), int(r.delivered), f"{r['delivery_rate_%']:.1f}%", int(r.rto), f"{r['rto_rate_%']:.1f}%", int(r.cancelled)] for _, r in b.iterrows()]
+        add_report_table('Brand-wise Analysis', ['Brand','Shipments','Delivered','Delivery %','RTO','RTO %','Cancelled'], rows, [120,58,58,62,45,52,55], 7)
+
+    # State-wise analysis, using the same filtered shipment data as the report KPIs.
+    if 'drop_location_state' in df.columns:
+        state_summary = rate_table(df, 'drop_location_state')
+        state_rows = [[str(r['drop_location_state'])[:32], int(r.shipments), int(r.delivered), f"{r['delivery_rate_%']:.1f}%", int(r.rto), f"{r['rto_rate_%']:.1f}%", int(r.cancelled), f"{r['cancellation_rate_%']:.1f}%"] for _, r in state_summary.iterrows()]
+        add_report_table('State-wise Analysis', ['Destination State','Shipments','Delivered','Delivery %','RTO','RTO %','Cancelled','Cancel %'], state_rows, [125,55,55,60,40,48,50,55], 6.5)
+
+    # Courier-wise analysis
+    if 'courier_name' in df.columns:
+        c = rate_table(df, 'courier_name')
+        courier_rows = [[str(r['courier_name'])[:32], int(r.shipments), int(r.delivered), f"{r['delivery_rate_%']:.1f}%", int(r.rto), f"{r['rto_rate_%']:.1f}%", int(r.cancelled)] for _, r in c.head(40).iterrows()]
+        add_report_table('Courier-wise Analysis (top 40)', ['Courier','Shipments','Delivered','Delivery %','RTO','RTO %','Cancelled'], courier_rows, [140,58,58,62,45,52,55], 7)
+
+    # Rule-based AI recommendations, aligned with the dashboard's recommendation thresholds.
+    story.append(Paragraph('AI Recommendations', styles['Heading3']))
+    if df.empty:
+        story.append(Paragraph('No recommendations are available because no shipments match the selected filters.', styles['Normal']))
+    else:
+        brand_summary = rate_table(df, 'brand') if 'brand' in df.columns else pd.DataFrame()
+        recommendation_count = 0
+        for _, brand_row in brand_summary.sort_values('shipments', ascending=False).iterrows():
+            brand = str(brand_row['brand'])
+            brand_data = df[df['brand'].astype(str) == brand]
+            bm = metrics(brand_data)
+            recs = []
+            if bm['Shipments'] < 10:
+                recs.append(f"Small sample size: only {bm['Shipments']} shipments; treat rates as directional and consider a longer date range.")
+            if bm['Delivery rate'] < 90 and bm['Finalized'] >= 10:
+                recs.append(f"Improve delivery success: delivery rate is {bm['Delivery rate']:.1f}%. Review failed delivery reasons, address quality, delivery attempts, and courier performance.")
+            elif bm['Delivery rate'] >= 97 and bm['Finalized'] >= 10:
+                recs.append(f"Maintain delivery performance: delivery rate is {bm['Delivery rate']:.1f}%. Identify and preserve the operating practices behind this result.")
+            if bm['RTO rate'] >= 10 and bm['Finalized'] >= 10:
+                recs.append(f"Reduce RTO: rate is {bm['RTO rate']:.1f}%. Investigate COD orders, failed attempts, customer availability, and high-RTO destination areas.")
+            if bm['Cancelled'] > 0:
+                recs.append(f"Investigate cancellations: {bm['Cancelled']:,} cancellations; cancellation rate is {bm['Cancellation rate']:.1f}% of finalized outcomes.")
+            if bm['Pending / in progress'] > 0:
+                recs.append(f"Follow up on pending/in-progress shipments: {bm['Pending / in progress']:,} shipments need aging and tracking review.")
+            if bm['Unknown / unmapped status'] > 0:
+                recs.append(f"Improve status mapping: {bm['Unknown / unmapped status']:,} rows have unknown/unmapped statuses; normalize them before relying on comparisons.")
+            courier_summary = rate_table(brand_data, 'courier_name') if 'courier_name' in brand_data.columns else pd.DataFrame()
+            eligible = courier_summary[courier_summary['shipments'] >= 5].copy() if not courier_summary.empty else pd.DataFrame()
+            if len(eligible) >= 2:
+                best = eligible.sort_values(['delivery_rate_%','shipments'], ascending=[False,False]).iloc[0]
+                worst = eligible.sort_values(['delivery_rate_%','shipments'], ascending=[True,False]).iloc[0]
+                if float(best['delivery_rate_%']) - float(worst['delivery_rate_%']) >= 10:
+                    recs.append(f"Review courier allocation: {best['courier_name']} is at {best['delivery_rate_%']:.1f}% delivery versus {worst['courier_name']} at {worst['delivery_rate_%']:.1f}%; compare serviceability and shipment mix before reallocating.")
+            if not recs:
+                recs.append('Keep monitoring: no major threshold-based risk stood out in the selected data. Continue monitoring delivery, RTO, cancellation, and pending-shipment KPIs.')
+            story.append(Paragraph(brand, styles['Heading4']))
+            for rec in recs:
+                story.append(Paragraph('&bull; ' + rec.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;'), styles['Normal']))
+                story.append(Spacer(1, 3))
+                recommendation_count += 1
+        if recommendation_count == 0:
+            story.append(Paragraph('No brand-level recommendations could be generated from the selected data.', styles['Normal']))
+    story.append(Spacer(1, 10))
+    story.append(Paragraph('Methodology: delivery, RTO and cancellation rates use finalized shipments as the denominator. Pending/in-progress shipments are excluded from these rate denominators. Shipment status is normalized from the source status field; validate status mapping and recommendations against operational context before making decisions.', styles['Italic']))
+    doc.build(story)
+    buf.seek(0)
+    return buf.getvalue()
 
 # Authentication gate: additive auth tables share the existing SQLite file but never modify shipment rows.
 init_auth_db(DB_PATH)
