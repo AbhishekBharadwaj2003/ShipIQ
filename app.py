@@ -40,7 +40,12 @@ h1 { font-weight:800 !important; } h2 { font-weight:750 !important; } h3 { font-
 [data-testid="stMetricValue"] { color:var(--shipiq-ivory) !important; font-family:'Manrope',sans-serif; font-weight:800; font-size:clamp(1.45rem, 2.15vw, 2.15rem) !important; white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important; letter-spacing:-.035em; }
 [data-testid="stMetric"] { min-width:0; }
 [data-testid="stMetric"] [data-testid="stMetricValue"] > div { white-space:nowrap !important; overflow:visible !important; text-overflow:clip !important; }
+[data-testid="stMetricDelta"] { overflow:visible !important; }
+[data-testid="stMetricDelta"] > div { white-space:normal !important; overflow:visible !important; text-overflow:clip !important; display:flex !important; flex-wrap:wrap !important; align-items:center; gap:.2rem; }
+[data-testid="stMetricDelta"] svg { flex-shrink:0; }
 [data-testid="stHorizontalBlock"] > [data-testid="column"] { min-width:0 !important; }
+@media (min-width: 769px) { [data-testid="stMetricDelta"] { font-size:clamp(.68rem, .8vw, .82rem) !important; line-height:1.25 !important; } }
+@media (max-width: 1100px) { [data-testid="stMetricDelta"] { font-size:.68rem !important; } }
 [data-testid="stMetricDelta"] { color:var(--shipiq-gold) !important; }
 [data-testid="stVerticalBlockBorderWrapper"] { border-color:var(--shipiq-line) !important; border-radius:15px !important; }
 [data-testid="stExpander"] { border:1px solid var(--shipiq-line); border-radius:12px; background:rgba(32,32,32,.7); }
@@ -207,13 +212,13 @@ def kpi_row(df, previous_df=None):
         if previous is not None:
             prev_value = previous[key]
             if kind == 'rate':
-                delta = f"{value - prev_value:+.2f} pp vs prev day"
+                delta = f"{value - prev_value:+.2f} pp vs previous day"
             elif prev_value:
-                delta = f"{(value - prev_value) / prev_value * 100:+.1f}% vs prev day"
+                delta = f"{(value - prev_value) / prev_value * 100:+.1f}% vs previous day"
             elif value:
-                delta = "New vs prev day"
+                delta = "New vs previous day"
             else:
-                delta = "0.0% vs prev day"
+                delta = "0.0% vs previous day"
         col.metric(label, display, delta=delta, delta_color="inverse" if key in ('RTO', 'Cancelled', 'RTO rate') else "normal")
     if previous_df is None or previous_df.empty:
         st.caption('Day-over-day comparison is unavailable because no shipments were found for the previous calendar day.')
