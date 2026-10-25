@@ -330,18 +330,27 @@ elif page=='Data Management':
     add_new_option = '➕ Add new brand'
     brand_options = existing_brands + [add_new_option]
 
-    with st.form('upload_form',clear_on_submit=True):
-        up=st.file_uploader('Choose shipment dataset',type=['xlsx','xls','csv'])
-        dataset_date=st.date_input('Dataset date',value=pd.Timestamp.today().date(),help='Choose the date this daily dataset should represent. This date will be applied to every row in the uploaded batch.')
-        brand_choice=st.selectbox('Brand',options=brand_options,index=0 if existing_brands else 0)
-        new_brand_name = st.text_input('New brand name',placeholder='e.g. NewBrand') if brand_choice == add_new_option else ''
-        submitted=st.form_submit_button('Validate and add dataset',type='primary')
-    if submitted:
+    # Keep these controls outside a form so selecting "Add new brand" reruns the
+    # page immediately and reveals the name field before the user submits.
+    up=st.file_uploader('Choose shipment dataset',type=['xlsx','xls','csv'],key='dataset_upload')
+    dataset_date=st.date_input('Dataset date',value=pd.Timestamp.today().date(),key='dataset_date_input',
+                               help='Choose the date this daily dataset should represent. This date will be applied to every row in the uploaded batch.')
+    brand_choice=st.selectbox('Brand',options=brand_options,index=0,key='dataset_brand_choice')
+    new_brand_name = ''
+    if brand_choice == add_new_option:
+        new_brand_name = st.text_input('New brand name',placeholder='e.g. NewBrand',key='new_dataset_brand_name')
+        st.caption('Enter the name of the new brand, then validate and add the dataset.')
+
+    if st.button('Validate and add dataset',type='primary',key='validate_add_dataset'):
         resolved_brand = new_brand_name.strip() if brand_choice == add_new_option else brand_choice
-        if up is None or not resolved_brand:
-            st.error('Choose a file and select an existing brand or enter a new brand name.')
+        if up is None:
+            st.error('Choose a shipment dataset first.')
+        elif not resolved_brand:
+            st.error('Enter a name for the new brand.')
         else:
             try:
+                # Streamlit UploadedFile supports seek; reset before reading.
+                up.seek(0)
                 new=pd.read_csv(up) if up.name.lower().endswith('.csv') else pd.read_excel(up)
                 if new.empty: st.error('The uploaded file has no rows.')
                 elif STATUS_COL not in new.columns: st.error(f"Required column '{STATUS_COL}' was not found.")
@@ -364,7 +373,7 @@ elif page=='Data Management':
                     st.success(f"Loaded {len(new):,} rows for {resolved_brand} dated {dataset_date.strftime('%d/%m/%Y')}. Existing data for other dates and brands was retained.")
                     st.rerun()
             except Exception as e: st.error(f'Could not read dataset: {e}')
-    st.caption('Existing brands are selected by default. Choose “➕ Add new brand” only when adding a brand not already listed.')
+    st.caption('Existing brands are available in the dropdown. Select “➕ Add new brand” to reveal a field where you can type a new brand name.')
     st.divider(); st.subheader('Loaded brands and source data')
     data=st.session_state.dataset
     if data.empty: st.info('No datasets loaded.')
