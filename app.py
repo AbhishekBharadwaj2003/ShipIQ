@@ -9,6 +9,20 @@ import numpy as np
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
+import plotly.io as pio
+
+# Apply the Green Teal palette to every Plotly chart in the dashboard.
+pio.templates["shipiq_green_teal"] = pio.templates["plotly_dark"]
+pio.templates["shipiq_green_teal"].layout.update(
+    paper_bgcolor="#061E1A",
+    plot_bgcolor="#0B2D27",
+    font=dict(family="DM Sans, sans-serif", color="#E8FFFA"),
+    title=dict(font=dict(color="#E8FFFA")),
+    xaxis=dict(gridcolor="#1E5A4E", zerolinecolor="#1E5A4E", linecolor="#28685C"),
+    yaxis=dict(gridcolor="#1E5A4E", zerolinecolor="#1E5A4E", linecolor="#28685C"),
+    colorway=["#2DD4BF", "#34D399", "#A3E635", "#60A5FA", "#FBBF24", "#F472B6"]
+)
+px.defaults.template = "shipiq_green_teal"
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet
@@ -72,13 +86,70 @@ st.markdown('''<style>
     border: 1px solid #1E5A4E !important;
 }
 html, body, [class*="css"] { font-family:'DM Sans',sans-serif; }
+/* Main canvas and all primary dashboard surfaces */
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+[data-testid="stMainBlockContainer"],
+section[data-testid="stMain"] {
+    background: #061E1A !important;
+    color: #E8FFFA !important;
+}
+[data-testid="stMainBlockContainer"] { background: transparent !important; }
+[data-testid="stMain"] h1,
+[data-testid="stMain"] h2,
+[data-testid="stMain"] h3,
+[data-testid="stMain"] p,
+[data-testid="stMain"] label,
+[data-testid="stMain"] [data-testid="stMarkdownContainer"] {
+    color: #E8FFFA;
+}
+[data-testid="stMetric"] {
+    background: linear-gradient(145deg, #0B2D27, #10483D);
+    border: 1px solid #1E5A4E;
+    border-radius: 14px;
+    padding: 14px 16px;
+}
+[data-testid="stMetricLabel"] p { color: #9BC8BE !important; }
+[data-testid="stMetricValue"] { color: #E8FFFA !important; }
+[data-testid="stMetricDelta"] { color: #2DD4BF !important; }
+[data-testid="stVerticalBlockBorderWrapper"] {
+    border-color: #1E5A4E !important;
+}
+[data-testid="stMain"] [data-baseweb="select"] > div,
+[data-testid="stMain"] [data-baseweb="input"] > div,
+[data-testid="stMain"] input,
+[data-testid="stMain"] textarea {
+    background-color: #0B2D27 !important;
+    color: #E8FFFA !important;
+    border-color: #28685C !important;
+}
+[data-testid="stMain"] [data-testid="stAlert"] {
+    background: #0B2D27 !important;
+    border: 1px solid #1E5A4E !important;
+}
+[data-testid="stMain"] button[kind="primary"] {
+    background: #10483D !important;
+    border: 1px solid #2DD4BF !important;
+    color: #E8FFFA !important;
+}
+[data-testid="stMain"] button[kind="secondary"] {
+    background: #0B2D27 !important;
+    border-color: #28685C !important;
+    color: #E8FFFA !important;
+}
+[data-testid="stMain"] [data-testid="stDataFrame"],
+[data-testid="stMain"] [data-testid="stTable"] {
+    border: 1px solid #1E5A4E;
+    border-radius: 10px;
+    overflow: hidden;
+}
 .stApp { background:radial-gradient(ellipse at 12% 0%,rgba(45,212,191,.12),transparent 35%),#061E1A; color:var(--shipiq-ivory); }
 
 .shipiq-kicker { display:block; width:100%; font-size:.82rem; letter-spacing:.16em; text-transform:uppercase; color:#174454 !important; -webkit-text-fill-color:#174454 !important; font-weight:900; line-height:1.7; opacity:1 !important; visibility:visible !important; text-shadow:none; margin-bottom:.5rem; overflow:visible; }
 .shipiq-title { font-family:'Manrope',sans-serif; font-size:2.35rem; font-weight:800; letter-spacing:-.055em; line-height:1.08; color:var(--shipiq-ivory); }
 .shipiq-sub { color:var(--shipiq-muted); font-size:1rem; margin-top:.55rem; line-height:1.65; }
 
-.stApp { background:radial-gradient(ellipse at 12% 0%,rgba(53,208,197,.10),transparent 35%),#0B1220; color:var(--shipiq-ivory); }
+
 </style>''', unsafe_allow_html=True)
 
 
