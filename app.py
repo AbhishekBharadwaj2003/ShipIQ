@@ -36,17 +36,55 @@ def load_excel(path, brand):
     return df
 
 def normalize_status(v):
-    if pd.isna(v): return 'Unknown'
-    s = str(v).strip().lower()
-    # Check return-to-origin first: statuses such as 'RTO Delivered' are RTO outcomes, not customer deliveries.
-    if any(x in s for x in ['rto', 'return to origin', 'returned to origin']): return 'RTO'
-    if any(x in s for x in ['deliver']): return 'Delivered'
-    if any(x in s for x in ['cancel']): return 'Cancelled'
-    if any(x in s for x in ['lost', 'damage', 'destroy']): return 'Lost/Damaged'
-    if any(x in s for x in ['undeliver', 'failed', 'exception']): return 'Failed/Undelivered'
-    if any(x in s for x in ['manifest', 'pickup pending', 'ready to ship', 'label']): return 'Manifested/Pending'
-    if any(x in s for x in ['transit', 'shipped', 'picked', 'out for delivery', 'ndr', 'in transit', 'reached']): return 'In Transit/Attempting'
+    """Map source statuses to outcome groups without treating 'undelivered' as 'delivered'."""
+    if pd.isna(v) or not str(v).strip():
+        return 'Unknown'
+    s = re.sub(r'\\s+', ' ', str(v).strip().lower())
+    # Outcomes that must take precedence over the substring "deliver".
+    if any(x in s for x in ['rto', 'return to origin', 'returned to origin', 'return-to-origin']):
+        return 'RTO'
+    if any(x in s for x in ['cancel', 'voided']):
+        return 'Cancelled'
+    if any(x in s for x in ['undeliver', 'not delivered', 'delivery failed', 'failed delivery',
+                            'failed', 'exception', 'attempt failed', 'non-delivery']):
+        return 'Failed/Undelivered'
+    if any(x in s for x in ['lost', 'damage', 'destroy']):
+        return 'Lost/Damaged'
+    if 'deliver' in s or s in {'delivered', 'complete', 'completed', 'success', 'successful'}:
+        return 'Delivered'
+    if any(x in s for x in ['manifest', 'pickup pending', 'ready to ship', 'label', 'booked']):
+        return 'Manifested/Pending'
+    if any(x in s for x in ['transit', 'shipped', 'picked', 'out for delivery', 'ndr', 'reached',
+                            'in warehouse', 'in hub', 'pickup complete', 'picked up']):
+        return 'In Transit/Attempting'
     return str(v).strip().title()
+
+
+def data_quality_summary(df):
+    """Return transparent data-quality checks; never silently discard source rows."""
+    if df.empty:
+        return {
+            'Rows loaded': 0, 'Rows with invalid/missing manifested date': 0,
+            'Rows with missing shipment status': 0, 'Rows with missing courier': 0,
+            'Rows with missing destination state': 0, 'Duplicate shipment-ID rows': 0,
+            'Unknown/unmapped status rows': 0,
+        }
+    duplicate_rows = 0
+    if 'shipment_id' in df.columns:
+        ids = df['shipment_id'].astype('string').str.strip()
+        valid_ids = ids.notna() & ids.ne('')
+        duplicate_rows = int(ids[valid_ids].duplicated(keep=False).sum())
+    known = {'Delivered', 'RTO', 'Cancelled', 'Lost/Damaged', 'Failed/Undelivered',
+             'Manifested/Pending', 'In Transit/Attempting', 'Unknown'}
+    return {
+        'Rows loaded': int(len(df)),
+        'Rows with invalid/missing manifested date': int(pd.to_datetime(df.get(DATE_COL, pd.Series(index=df.index, dtype='object')), errors='coerce').isna().sum()),
+        'Rows with missing shipment status': int(df[STATUS_COL].isna().sum()) if STATUS_COL in df.columns else int(len(df)),
+        'Rows with missing courier': int(df['courier_name'].isna().sum() + df['courier_name'].astype('string').str.strip().eq('').sum()) if 'courier_name' in df.columns else int(len(df)),
+        'Rows with missing destination state': int(df['drop_location_state'].isna().sum() + df['drop_location_state'].astype('string').str.strip().eq('').sum()) if 'drop_location_state' in df.columns else int(len(df)),
+        'Duplicate shipment-ID rows': duplicate_rows,
+        'Unknown/unmapped status rows': int((~df.get('normalized_status', pd.Series('Unknown', index=df.index)).isin(known)).sum()),
+    }
 
 def clean_df(df, brand):
     df = df.copy()
@@ -282,7 +320,25 @@ elif page=='Data Management':
     else:
         summary=data.groupby('brand').agg(rows=('brand','size'),unique_shipments=('shipment_id','nunique') if 'shipment_id' in data.columns else ('brand','size'),couriers=('courier_name','nunique')).reset_index()
         st.dataframe(summary,use_container_width=True,hide_index=True)
-        st.caption(f"Current session total: {len(data):,} rows. Original bundled September datasets load automatically when the app starts.")
+        st.caption(f"Current session total: {len(data):,} source rows. Original bundled September datasets load automatically when the app starts.")
+
+        st.subheader('Data quality validation')
+        quality = data_quality_summary(data)
+        q1, q2 = st.columns(2)
+        with q1:
+            st.dataframe(pd.DataFrame({'Check': list(quality.keys()), 'Count': list(quality.values())}),
+                         use_container_width=True, hide_index=True)
+        with q2:
+            status_check = data.groupby(['shipment_status', 'normalized_status'], dropna=False).size().reset_index(name='rows') if STATUS_COL in data.columns else pd.DataFrame()
+            if not status_check.empty:
+                st.markdown('**Source status → normalized status**')
+                st.dataframe(status_check.sort_values('rows', ascending=False), use_container_width=True, hide_index=True)
+        if quality['Duplicate shipment-ID rows']:
+            st.warning(f"Found {quality['Duplicate shipment-ID rows']:,} rows whose shipment ID appears more than once. These rows are retained, not silently removed; confirm whether repeated IDs are valid records before interpreting totals.")
+        if quality['Rows with invalid/missing manifested date']:
+            st.warning(f"{quality['Rows with invalid/missing manifested date']:,} rows have no usable manifested date and will be excluded from date-filtered views.")
+        if quality['Unknown/unmapped status rows']:
+            st.warning(f"{quality['Unknown/unmapped status rows']:,} rows have source statuses outside the recognized outcome groups. Review the mapping before relying on outcome rates.")
         with st.expander('Preview combined data'): st.dataframe(data.head(100),use_container_width=True)
         if st.button('Reset to bundled September datasets',type='secondary'):
             st.session_state.dataset=load_defaults(); st.rerun()
