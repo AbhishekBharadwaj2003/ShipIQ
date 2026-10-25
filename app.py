@@ -173,10 +173,13 @@ def metrics(df):
     recognized = {'Delivered', 'RTO', 'Cancelled', 'Lost/Damaged', 'Failed/Undelivered',
                   'Manifested/Pending', 'In Transit/Attempting'}
     unknown = int((~df['normalized_status'].isin(recognized)).sum())
+    # Delivery/RTO rates use only shipments with a completed delivery or completed RTO.
+    # Cancelled, pending, failed, and unknown outcomes are excluded from this rate denominator.
+    completed_outcomes = delivered + rto
     return {
         'Shipments': total, 'Delivered': delivered,
-        'Delivery rate': rate(delivered, final), 'RTO': rto,
-        'RTO rate': rate(rto, final), 'Cancelled': cancelled,
+        'Delivery rate': rate(delivered, completed_outcomes), 'RTO': rto,
+        'RTO rate': rate(rto, completed_outcomes), 'Cancelled': cancelled,
         'Cancellation rate': rate(cancelled, final), 'Finalized': final,
         'Pending / in progress': pending, 'Unknown / unmapped status': unknown,
     }
@@ -184,9 +187,18 @@ def metrics(df):
 
 def kpi_row(df):
     m=metrics(df)
-    cols=st.columns(5)
-    vals=[('Shipments',f"{m['Shipments']:,}"),('Delivered',f"{m['Delivered']:,}"),('Delivery rate',f"{m['Delivery rate']:.1f}%"),('RTO rate',f"{m['RTO rate']:.1f}%"),('Cancellations',f"{m['Cancelled']:,}")]
-    for c,(label,val) in zip(cols,vals): c.metric(label,val)
+    cols=st.columns(6)
+    vals=[
+        ('Manifested', f"{m['Shipments']:,}"),
+        ('Delivered', f"{m['Delivered']:,}"),
+        ('RTO Delivered', f"{m['RTO']:,}"),
+        ('Cancelled', f"{m['Cancelled']:,}"),
+        ('Delivery rate*', f"{m['Delivery rate']:.2f}%"),
+        ('RTO rate*', f"{m['RTO rate']:.2f}%"),
+    ]
+    for c,(label,val) in zip(cols,vals):
+        c.metric(label,val)
+    st.caption('* Delivery and RTO rates are calculated from completed delivery and completed RTO outcomes only; cancelled, pending, failed, and unknown shipments are excluded.')
 
 def rate_table(df, by):
     if df.empty: return pd.DataFrame()
