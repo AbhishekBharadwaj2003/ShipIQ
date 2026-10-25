@@ -1019,35 +1019,66 @@ elif page=='Data Management':
                             st.rerun()
 
             st.divider()
-            st.markdown('**Remove data for a specific brand and date range**')
-            st.caption('Use this to remove a test upload (for example, Freely from 01–05 October) without deleting the brand’s other dates.')
+            st.markdown('**Remove data for a specific brand and date**')
+            st.caption('Remove one day or a date range for one brand only. Other brands and dates will be retained.')
             remove_brands = sorted(data['brand'].dropna().astype(str).unique().tolist())
             remove_brand = st.selectbox('Brand to remove from', remove_brands, key='remove_range_brand')
-            remove_start, remove_end = st.date_input(
-                'Dates to remove',
-                value=(pd.Timestamp('2026-10-01').date(), pd.Timestamp('2026-10-05').date()),
-                key='remove_range_dates'
+            removal_mode = st.radio(
+                'Removal type',
+                ['Single day', 'Date range'],
+                horizontal=True,
+                key='remove_date_mode'
             )
-            if st.button('Remove selected brand data for these dates', type='secondary', key='remove_brand_date_range'):
-                if not isinstance(remove_start, type(pd.Timestamp.today().date())) or not isinstance(remove_end, type(pd.Timestamp.today().date())):
-                    st.error('Choose both a start date and an end date.')
-                elif remove_start > remove_end:
-                    st.error('The start date must be on or before the end date.')
-                else:
+            if removal_mode == 'Single day':
+                single_remove_date = st.date_input(
+                    'Date to remove',
+                    value=pd.Timestamp('2026-10-01').date(),
+                    key='remove_single_date'
+                )
+                if st.button('Remove selected brand data for this day', type='secondary', key='remove_brand_single_date'):
                     st.session_state['pending_remove_range'] = {
                         'brand': remove_brand,
-                        'start': remove_start.isoformat(),
-                        'end': remove_end.isoformat(),
+                        'mode': 'single',
+                        'start': single_remove_date.isoformat(),
+                        'end': single_remove_date.isoformat(),
                     }
+            else:
+                date_selection = st.date_input(
+                    'Dates to remove',
+                    value=(pd.Timestamp('2026-10-01').date(), pd.Timestamp('2026-10-05').date()),
+                    key='remove_range_dates'
+                )
+                if not isinstance(date_selection, (tuple, list)) or len(date_selection) != 2:
+                    st.info('Choose both a start date and an end date.')
+                else:
+                    remove_start, remove_end = date_selection
+                    if st.button('Remove selected brand data for these dates', type='secondary', key='remove_brand_date_range'):
+                        if remove_start > remove_end:
+                            st.error('The start date must be on or before the end date.')
+                        else:
+                            st.session_state['pending_remove_range'] = {
+                                'brand': remove_brand,
+                                'mode': 'range',
+                                'start': remove_start.isoformat(),
+                                'end': remove_end.isoformat(),
+                            }
             pending_remove = st.session_state.get('pending_remove_range')
             if pending_remove:
-                st.warning(
-                    f"Remove all {pending_remove['brand']} rows with manifested dates from "
-                    f"{pending_remove['start']} through {pending_remove['end']}? This cannot be undone unless you upload the data again."
-                )
+                if pending_remove.get('mode') == 'single':
+                    st.warning(
+                        f"Remove all {pending_remove['brand']} rows with manifested date "
+                        f"{pending_remove['start']}? This cannot be undone unless you upload the data again."
+                    )
+                    confirm_label = 'Confirm single-day removal'
+                else:
+                    st.warning(
+                        f"Remove all {pending_remove['brand']} rows with manifested dates from "
+                        f"{pending_remove['start']} through {pending_remove['end']}? This cannot be undone unless you upload the data again."
+                    )
+                    confirm_label = 'Confirm date-range removal'
                 yes_col, no_col = st.columns(2)
                 with yes_col:
-                    if st.button('Confirm date-range removal', type='primary', key='confirm_remove_range'):
+                    if st.button(confirm_label, type='primary', key='confirm_remove_range'):
                         start_remove = pd.Timestamp(pending_remove['start']).date()
                         end_remove = pd.Timestamp(pending_remove['end']).date()
                         current = st.session_state.dataset
@@ -1058,7 +1089,10 @@ elif page=='Data Management':
                         st.session_state.dataset = current.loc[~(target_brand & target_dates)].reset_index(drop=True)
                         save_dataset(st.session_state.dataset)
                         st.session_state.pop('pending_remove_range', None)
-                        st.success(f"Removed {removed_count:,} rows for {pending_remove['brand']} from {start_remove} through {end_remove}. Other brands and dates were retained.")
+                        if pending_remove.get('mode') == 'single':
+                            st.success(f"Removed {removed_count:,} rows for {pending_remove['brand']} on {start_remove}. Other brands and dates were retained.")
+                        else:
+                            st.success(f"Removed {removed_count:,} rows for {pending_remove['brand']} from {start_remove} through {end_remove}. Other brands and dates were retained.")
                         st.rerun()
                 with no_col:
                     if st.button('Cancel removal', key='cancel_remove_range'):
