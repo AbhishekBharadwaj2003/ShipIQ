@@ -50,13 +50,15 @@ def normalize_status(v):
         return 'Failed/Undelivered'
     if any(x in s for x in ['lost', 'damage', 'destroy']):
         return 'Lost/Damaged'
-    if 'deliver' in s or s in {'delivered', 'complete', 'completed', 'success', 'successful'}:
-        return 'Delivered'
-    if any(x in s for x in ['manifest', 'pickup pending', 'ready to ship', 'label', 'booked']):
-        return 'Manifested/Pending'
-    if any(x in s for x in ['transit', 'shipped', 'picked', 'out for delivery', 'ndr', 'reached',
+    # "Out for delivery" and "delivery attempted" are not successful deliveries.
+    if any(x in s for x in ['out for delivery', 'delivery attempted', 'attempting delivery',
+                            'transit', 'shipped', 'picked', 'ndr', 'reached',
                             'in warehouse', 'in hub', 'pickup complete', 'picked up']):
         return 'In Transit/Attempting'
+    if any(x in s for x in ['manifest', 'pickup pending', 'ready to ship', 'label', 'booked']):
+        return 'Manifested/Pending'
+    if 'deliver' in s or s in {'complete', 'completed', 'success', 'successful'}:
+        return 'Delivered'
     return str(v).strip().title()
 
 
