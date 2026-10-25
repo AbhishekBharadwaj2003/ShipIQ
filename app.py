@@ -12,17 +12,17 @@ import plotly.graph_objects as go
 import plotly.io as pio
 
 # Apply the Green Teal palette to every Plotly chart in the dashboard.
-pio.templates["shipiq_green_teal"] = pio.templates["plotly_dark"]
-pio.templates["shipiq_green_teal"].layout.update(
-    paper_bgcolor="#061E1A",
-    plot_bgcolor="#0B2D27",
-    font=dict(family="DM Sans, sans-serif", color="#E8FFFA"),
-    title=dict(font=dict(color="#E8FFFA")),
-    xaxis=dict(gridcolor="#1E5A4E", zerolinecolor="#1E5A4E", linecolor="#28685C"),
-    yaxis=dict(gridcolor="#1E5A4E", zerolinecolor="#1E5A4E", linecolor="#28685C"),
-    colorway=["#2DD4BF", "#34D399", "#A3E635", "#60A5FA", "#FBBF24", "#F472B6"]
+pio.templates["shipiq_blue"] = pio.templates["plotly_dark"]
+pio.templates["shipiq_blue"].layout.update(
+    paper_bgcolor="#0B1220",
+    plot_bgcolor="#121D2D",
+    font=dict(family="DM Sans, sans-serif", color="#EDF7FF"),
+    title=dict(font=dict(color="#EDF7FF")),
+    xaxis=dict(gridcolor="#263B50", zerolinecolor="#263B50", linecolor="#355064"),
+    yaxis=dict(gridcolor="#263B50", zerolinecolor="#263B50", linecolor="#355064"),
+    colorway=["#35D0C5", "#60A5FA", "#818CF8", "#FBBF24", "#F472B6", "#34D399"]
 )
-px.defaults.template = "shipiq_green_teal"
+px.defaults.template = "shipiq_blue"
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet
@@ -38,44 +38,44 @@ st.set_page_config(page_title='ShipIQ | Shipment Intelligence', page_icon='📦'
 
 st.markdown('''<style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
-:root { --shipiq-bg:#061E1A; --shipiq-surface:#0B2D27; --shipiq-surface2:#10483D; --shipiq-line:#1E5A4E; --shipiq-gold:#2DD4BF; --shipiq-ivory:#E8FFFA; --shipiq-muted:#9BC8BE; }
+:root { --shipiq-bg:#0B1220; --shipiq-surface:#121D2D; --shipiq-surface2:#19283A; --shipiq-line:#263B50; --shipiq-gold:#35D0C5; --shipiq-ivory:#EDF7FF; --shipiq-muted:#9AAFC2; }
 /* ShipIQ dark-teal theme: keep Streamlit's sidebar and controls in the same visual system. */
 [data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0B2D27 0%, #061E1A 100%) !important;
-    border-right: 1px solid #1E5A4E;
+    background: linear-gradient(180deg, #121D2D 0%, #0B1220 100%) !important;
+    border-right: 1px solid #263B50;
 }
 [data-testid="stSidebar"] > div:first-child { background: transparent !important; }
 [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p,
 [data-testid="stSidebar"] label,
 [data-testid="stSidebar"] .stCaption,
 [data-testid="stSidebar"] [data-testid="stWidgetLabel"] p {
-    color: #B9DCD4 !important;
+    color: #C3D3E0 !important;
 }
 [data-testid="stSidebar"] h1,
 [data-testid="stSidebar"] h2,
-[data-testid="stSidebar"] h3 { color: #E8FFFA !important; }
-[data-testid="stSidebar"] hr { border-color: #1E5A4E !important; }
+[data-testid="stSidebar"] h3 { color: #EDF7FF !important; }
+[data-testid="stSidebar"] hr { border-color: #263B50 !important; }
 [data-testid="stSidebar"] [data-testid="stRadio"] > div { gap: .35rem; }
 [data-testid="stSidebar"] [data-testid="stRadio"] label {
-    background: #0B2D27;
-    border: 1px solid #1E5A4E;
+    background: #121D2D;
+    border: 1px solid #263B50;
     border-radius: 10px;
     padding: .35rem .55rem;
 }
 [data-testid="stSidebar"] [data-testid="stRadio"] label:has(input:checked) {
-    background: #10483D !important;
-    border-color: #2DD4BF !important;
+    background: #19283A !important;
+    border-color: #35D0C5 !important;
 }
 [data-testid="stSidebar"] input,
 [data-testid="stSidebar"] [data-baseweb="select"] > div,
 [data-testid="stSidebar"] [data-baseweb="input"] > div,
 [data-testid="stSidebar"] [data-baseweb="datepicker"] {
-    background-color: #0B2D27 !important;
+    background-color: #121D2D !important;
     color: #EDF7FF !important;
-    border-color: #28685C !important;
+    border-color: #355064 !important;
 }
 [data-testid="stSidebar"] [data-baseweb="tag"] {
-    background-color: #10483D !important;
+    background-color: #19283A !important;
     color: #EDF7FF !important;
 }
 [data-testid="stSidebar"] button {
@@ -83,7 +83,7 @@ st.markdown('''<style>
 }
 [data-testid="stSidebar"] [data-testid="stAlert"] {
     background: #121D2D !important;
-    border: 1px solid #1E5A4E !important;
+    border: 1px solid #263B50 !important;
 }
 html, body, [class*="css"] { font-family:'DM Sans',sans-serif; }
 /* Main canvas and all primary dashboard surfaces */
@@ -91,8 +91,8 @@ html, body, [class*="css"] { font-family:'DM Sans',sans-serif; }
 [data-testid="stMain"],
 [data-testid="stMainBlockContainer"],
 section[data-testid="stMain"] {
-    background: #061E1A !important;
-    color: #E8FFFA !important;
+    background: #0B1220 !important;
+    color: #EDF7FF !important;
 }
 [data-testid="stMainBlockContainer"] { background: transparent !important; }
 [data-testid="stMain"] h1,
@@ -104,46 +104,46 @@ section[data-testid="stMain"] {
     color: #E8FFFA;
 }
 [data-testid="stMetric"] {
-    background: linear-gradient(145deg, #0B2D27, #10483D);
-    border: 1px solid #1E5A4E;
+    background: linear-gradient(145deg, #121D2D, #19283A);
+    border: 1px solid #263B50;
     border-radius: 14px;
     padding: 14px 16px;
 }
-[data-testid="stMetricLabel"] p { color: #9BC8BE !important; }
-[data-testid="stMetricValue"] { color: #E8FFFA !important; }
-[data-testid="stMetricDelta"] { color: #2DD4BF !important; }
+[data-testid="stMetricLabel"] p { color: #9AAFC2 !important; }
+[data-testid="stMetricValue"] { color: #EDF7FF !important; }
+[data-testid="stMetricDelta"] { color: #35D0C5 !important; }
 [data-testid="stVerticalBlockBorderWrapper"] {
-    border-color: #1E5A4E !important;
+    border-color: #263B50 !important;
 }
 [data-testid="stMain"] [data-baseweb="select"] > div,
 [data-testid="stMain"] [data-baseweb="input"] > div,
 [data-testid="stMain"] input,
 [data-testid="stMain"] textarea {
-    background-color: #0B2D27 !important;
-    color: #E8FFFA !important;
-    border-color: #28685C !important;
+    background-color: #121D2D !important;
+    color: #EDF7FF !important;
+    border-color: #355064 !important;
 }
 [data-testid="stMain"] [data-testid="stAlert"] {
-    background: #0B2D27 !important;
-    border: 1px solid #1E5A4E !important;
+    background: #121D2D !important;
+    border: 1px solid #263B50 !important;
 }
 [data-testid="stMain"] button[kind="primary"] {
-    background: #10483D !important;
+    background: #19283A !important;
     border: 1px solid #2DD4BF !important;
-    color: #E8FFFA !important;
+    color: #EDF7FF !important;
 }
 [data-testid="stMain"] button[kind="secondary"] {
-    background: #0B2D27 !important;
-    border-color: #28685C !important;
-    color: #E8FFFA !important;
+    background: #121D2D !important;
+    border-color: #355064 !important;
+    color: #EDF7FF !important;
 }
 [data-testid="stMain"] [data-testid="stDataFrame"],
 [data-testid="stMain"] [data-testid="stTable"] {
-    border: 1px solid #1E5A4E;
+    border: 1px solid #263B50;
     border-radius: 10px;
     overflow: hidden;
 }
-.stApp { background:radial-gradient(ellipse at 12% 0%,rgba(45,212,191,.12),transparent 35%),#061E1A; color:var(--shipiq-ivory); }
+.stApp { background:radial-gradient(ellipse at 12% 0%,rgba(53,208,197,.10),transparent 35%),#0B1220; color:var(--shipiq-ivory); }
 
 .shipiq-kicker { display:block; width:100%; font-size:.82rem; letter-spacing:.16em; text-transform:uppercase; color:#174454 !important; -webkit-text-fill-color:#174454 !important; font-weight:900; line-height:1.7; opacity:1 !important; visibility:visible !important; text-shadow:none; margin-bottom:.5rem; overflow:visible; }
 .shipiq-title { font-family:'Manrope',sans-serif; font-size:2.35rem; font-weight:800; letter-spacing:-.055em; line-height:1.08; color:var(--shipiq-ivory); }
