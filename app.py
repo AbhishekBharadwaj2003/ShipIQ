@@ -33,7 +33,7 @@ html, body, [class*="css"] { font-family:'DM Sans',sans-serif; }
 [data-testid="stSidebar"] [data-testid="stRadio"] label { padding:.25rem 0; }
 h1,h2,h3,h4 { font-family:'Manrope',sans-serif !important; letter-spacing:-.035em; color:var(--shipiq-ivory); }
 h1 { font-weight:800 !important; } h2 { font-weight:750 !important; } h3 { font-weight:700 !important; }
-.shipiq-kicker { display:block; width:100%; font-size:.78rem; letter-spacing:.16em; text-transform:uppercase; color:#35D0C5 !important; font-weight:800; line-height:1.6; opacity:1 !important; visibility:visible !important; text-shadow:0 0 12px rgba(53,208,197,.18); margin-bottom:.45rem; overflow:visible; }
+.shipiq-kicker { display:block; width:100%; font-size:.82rem; letter-spacing:.16em; text-transform:uppercase; color:#75FFF3 !important; -webkit-text-fill-color:#75FFF3 !important; font-weight:900; line-height:1.7; opacity:1 !important; visibility:visible !important; text-shadow:0 0 8px rgba(53,208,197,.65), 0 0 18px rgba(53,208,197,.35); margin-bottom:.5rem; overflow:visible; }
 .shipiq-title { font-family:'Manrope',sans-serif; font-size:2.35rem; font-weight:800; letter-spacing:-.055em; line-height:1.08; color:var(--shipiq-ivory); }
 .shipiq-sub { color:var(--shipiq-muted); font-size:1rem; margin-top:.55rem; line-height:1.65; }
 [data-testid="stMetric"] { background:linear-gradient(145deg,#19283A,#121D2D); border:1px solid var(--shipiq-line); border-radius:15px; padding:19px 20px; box-shadow:0 10px 26px rgba(0,0,0,.12); transition:transform .18s ease,border-color .18s ease; }
