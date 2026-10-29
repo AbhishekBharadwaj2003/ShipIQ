@@ -700,9 +700,8 @@ def render_auth_screen():
             else:
                 ok, message, user = register_user(DB_PATH, reg_name, reg_email, reg_password)
                 if ok:
-                    st.session_state.auth_user = user
-                    st.success("Account created. Opening ShipIQ…")
-                    st.rerun()
+                    st.success("Account created successfully. Please sign in using your email address and password.")
+                    st.info("Your account is ready. Open the Sign in tab to log in.")
                 else:
                     st.error(message)
 
