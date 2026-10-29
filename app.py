@@ -755,7 +755,7 @@ with st.sidebar:
         brand_options = load_brand_names()
         selected_brand = st.selectbox(
             'Select brand to analyse',
-            options=['Select a brand'] + brand_options,
+            options=['Select a brand', 'All Brands'] + brand_options,
             index=0,
             key='shipiq_selected_brand',
             help='Analytics load only after you explicitly select a brand.'
@@ -764,6 +764,12 @@ with st.sidebar:
             st.session_state.dataset = pd.DataFrame()
             all_data = pd.DataFrame()
             st.info('Select a brand to load its shipment analytics.')
+        elif selected_brand == 'All Brands':
+            with st.spinner('Loading shipment data for all brands...'):
+                persisted_dataset = load_persisted_dataset()
+                st.session_state.dataset = persisted_dataset if persisted_dataset is not None else load_defaults()
+            all_data = st.session_state.dataset.copy()
+            chosen_brands = sorted(all_data['brand'].dropna().astype(str).unique().tolist()) if not all_data.empty and 'brand' in all_data.columns else []
         else:
             with st.spinner(f'Loading {selected_brand} shipment data...'):
                 st.session_state.dataset = load_persisted_brand(selected_brand)
