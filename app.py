@@ -775,23 +775,42 @@ with st.sidebar:
                 st.session_state.dataset = load_persisted_brand(selected_brand)
             all_data = st.session_state.dataset.copy()
             chosen_brands = [selected_brand]
-            if not all_data.empty:
-                dates = pd.to_datetime(all_data[DATE_COL], errors='coerce').dropna()
-                if not dates.empty:
-                    min_d, max_d = dates.min().date(), dates.max().date()
-                    mode = st.radio('Date filter', ['Date range', 'Single date'], horizontal=False)
-                    if mode == 'Single date':
-                        chosen = st.date_input('Manifested date', value=max_d, min_value=min_d, max_value=max_d)
-                        start_d = end_d = chosen
+
+        # Show the same date filters for a single brand and for All Brands.
+        if selected_brand != 'Select a brand' and not all_data.empty:
+            dates = pd.to_datetime(all_data[DATE_COL], errors='coerce').dropna()
+            if not dates.empty:
+                min_d, max_d = dates.min().date(), dates.max().date()
+                mode = st.radio(
+                    'Date filter',
+                    ['Date range', 'Single date'],
+                    horizontal=False,
+                    key='analytics_date_filter_mode'
+                )
+                if mode == 'Single date':
+                    chosen = st.date_input(
+                        'Manifested date',
+                        value=max_d,
+                        min_value=min_d,
+                        max_value=max_d,
+                        key='analytics_single_date'
+                    )
+                    start_d = end_d = chosen
+                else:
+                    selected = st.date_input(
+                        'Manifested date range',
+                        value=(min_d, max_d),
+                        min_value=min_d,
+                        max_value=max_d,
+                        key='analytics_date_range'
+                    )
+                    if isinstance(selected, tuple) and len(selected) == 2:
+                        start_d, end_d = selected
                     else:
-                        selected = st.date_input('Manifested date range', value=(min_d, max_d), min_value=min_d, max_value=max_d)
-                        if isinstance(selected, tuple) and len(selected) == 2:
-                            start_d, end_d = selected
-                        else:
-                            start_d = end_d = selected
-                    st.caption('Dates are based on manifested_date.')
-            else:
-                st.warning(f'No shipment records were found for {selected_brand}.')
+                        start_d = end_d = selected
+                st.caption('Dates are based on manifested_date.')
+        elif selected_brand != 'Select a brand':
+            st.warning(f'No shipment records were found for {selected_brand}.')
     else:
         # User Management does not need to load shipment payloads.
         st.session_state.dataset = pd.DataFrame()
