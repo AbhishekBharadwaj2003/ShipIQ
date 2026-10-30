@@ -340,10 +340,11 @@ def save_dataset(dataset):
         _init_database(conn)
         conn.execute('DELETE FROM shipments')
         if rows:
-            conn.executemany(
-                'INSERT INTO shipments (brand, manifested_date, shipment_id, payload_json) VALUES (%s, %s, %s, %s)',
-                rows
-            )
+            with conn.cursor() as cur:
+                cur.executemany(
+                    'INSERT INTO shipments (brand, manifested_date, shipment_id, payload_json) VALUES (%s, %s, %s, %s)',
+                    rows
+                )
         conn.execute(
             "INSERT INTO shipiq_metadata (key, value) VALUES ('schema_version', '2') "
             "ON CONFLICT(key) DO UPDATE SET value=EXCLUDED.value"
